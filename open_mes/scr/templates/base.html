@@ -158,6 +158,23 @@
         src="{% md5url 'js/base.js' %}">
 </script>
 
+<!-- Chart.js基本設定 -->
+<script>
+    const chartConfig = {
+        maintainAspectRatio: false,
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: '生産状況リアルタイムモニター'
+            }
+        }
+    };
+</script>
+
 {% block js_link %}
     <!-- ここに個別のjsのリンクを書く -->
 {% endblock js_link %}
