@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import json
+import time
 from django.http import JsonResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .o3mini import O3MiniAPI
@@ -52,3 +53,29 @@ def dashboard_control(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def data_stream(request):
+    """
+    Server-Sent Events (SSE) エンドポイント
+    クライアントにリアルタイムデータを送信
+    """
+    def event_stream():
+        while True:
+            # ダミーデータを生成（実際の実装では実際のデータソースから取得）
+            data = {
+                'value': 75 + (datetime.now().second % 20),  # 変動する値
+                'instruction': '通常運転中',
+                'status': '正常',
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # SSE形式でデータを送信
+            yield f"data: {json.dumps(data)}\n\n"
+            
+            # 1秒待機
+            time.sleep(1)
+    
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'  # Nginxバッファリング無効化
+    return response
