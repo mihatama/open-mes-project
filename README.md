@@ -18,6 +18,10 @@ docker compose exec -it open_mes python3 manage.py createsuperuser
 
 ## .envファイルのサンプル
 
+MCP (o3-mini) の機能を利用するには以下の環境変数が必要です:
+SECRET_KEY=your_secret_key_here
+O3_MINI_API_KEY=your_o3_mini_api_key_here
+
 下記コマンドでセキュリティキーを再発行する
 ```
 docker compose exec -it open_mes python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"

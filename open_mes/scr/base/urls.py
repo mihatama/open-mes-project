@@ -27,6 +27,7 @@ app_name = "base"
 
 urlpatterns = [
     path('admin/', admin.site.urls),  # Django管理サイトへのURL
+    path('mcp/', include('mcp.urls')),
     path('', top.TopView.as_view(), name="main"),  # メインページへのURL
     path('inventory/menu/', inventory_menu.InventoryMenuView.as_view(), name="inventory_menu"),  # 在庫管理メニューページへのURL
     path('inventory/inquiry/', inventory_menu.InquiryView.as_view(), name="inventory_inquiry"),  # 在庫照会ページへのURL (在庫照会)
