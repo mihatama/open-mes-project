@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP リアルタイムデータテスト</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .data-display {
+            background-color: #f0f8ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .log-entry {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+        }
+        .status-normal {
+            color: green;
+        }
+        .status-error {
+            color: red;
+        }
+        .status-processing {
+            color: orange;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>MCP リアルタイムデータテスト</h1>
+    
+    <div class="container">
+        <!-- リアルタイムデータ表示 -->
+        <div class="card">
+            <h2>現在のデータ</h2>
+            <div id="current-data" class="data-display">
+                <p>値: <span id="value">--</span></p>
+                <p>指示: <span id="instruction">--</span></p>
+                <p>状態: <span id="status">--</span></p>
+                <p>時刻: <span id="timestamp">--</span></p>
+            </div>
+        </div>
+        
+        <!-- モックデータ生成 -->
+        <div class="card">
+            <h2>モックデータ生成</h2>
+            <p>このセクションでは、実際のSSEサーバーがなくてもデータをシミュレートします。</p>
+            <button id="generate-data">データ生成開始</button>
+            <button id="stop-data" disabled>停止</button>
+        </div>
+        
+        <!-- ログ表示 -->
+        <div class="card">
+            <h2>データログ</h2>
+            <div id="log-container" class="log-container">
+                <!-- ログエントリがここに追加されます -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素
+        const valueEl = document.getElementById('value');
+        const instructionEl = document.getElementById('instruction');
+        const statusEl = document.getElementById('status');
+        const timestampEl = document.getElementById('timestamp');
+        const logContainer = document.getElementById('log-container');
+        const generateBtn = document.getElementById('generate-data');
+        const stopBtn = document.getElementById('stop-data');
+        
+        // データ生成間隔（ミリ秒）
+        const DATA_INTERVAL = 1000;
+        let dataInterval = null;
+        let counter = 0;
+        
+        // モックデータ生成
+        function generateMockData() {
+            counter++;
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            // ランダムな値を生成
+            const value = 75 + (counter % 20);
+            
+            // 指示内容（10回ごとに変更）
+            let instruction = '通常運転中';
+            let status = '正常';
+            
+            if (counter % 10 === 0) {
+                instruction = '生産ラインの速度を調整中';
+                status = '処理中';
+            }
+            
+            // データオブジェクト
+            const data = {
+                value,
+                instruction,
+                status,
+                timestamp: now.toISOString()
+            };
+            
+            // データを表示
+            updateDisplay(data);
+            
+            // ログに追加
+            addLogEntry(data, timeString);
+            
+            return data;
+        }
+        
+        // 表示を更新
+        function updateDisplay(data) {
+            valueEl.textContent = data.value;
+            instructionEl.textContent = data.instruction;
+            
+            // ステータスに応じたクラスを設定
+            statusEl.textContent = data.status;
+            statusEl.className = '';
+            
+            if (data.status === '正常') {
+                statusEl.classList.add('status-normal');
+            } else if (data.status === 'エラー') {
+                statusEl.classList.add('status-error');
+            } else {
+                statusEl.classList.add('status-processing');
+            }
+            
+            timestampEl.textContent = new Date(data.timestamp).toLocaleString();
+        }
+        
+        // ログエントリを追加
+        function addLogEntry(data, timeString) {
+            const logEntry = document.createElement('div');
+            logEntry.classList.add('log-entry');
+            
+            logEntry.innerHTML = `
+                <strong>${timeString}</strong> - 
+                値: ${data.value}, 
+                指示: ${data.instruction}, 
+                状態: <span class="status-${data.status === '正常' ? 'normal' : data.status === 'エラー' ? 'error' : 'processing'}">${data.status}</span>
+            `;
+            
+            logContainer.prepend(logEntry);
+            
+            // 最大100エントリまで保持
+            if (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+        
+        // データ生成開始
+        generateBtn.addEventListener('click', () => {
+            if (dataInterval) return;
+            
+            generateBtn.disabled = true;
+            stopBtn.disabled = false;
+            
+            // 初回データ生成
+            generateMockData();
+            
+            // 定期的にデータを生成
+            dataInterval = setInterval(generateMockData, DATA_INTERVAL);
+        });
+        
+        // データ生成停止
+        stopBtn.addEventListener('click', () => {
+            if (dataInterval) {
+                clearInterval(dataInterval);
+                dataInterval = null;
+                
+                generateBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
