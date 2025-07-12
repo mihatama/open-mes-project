@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SideMenu = ({ isOpen, isStaffOrSuperuser }) => {
+const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick }) => {
   return (
     <nav id="menu-bar" className={isOpen ? 'open' : ''}>
       <a href="#">トップページ</a>
@@ -35,6 +35,13 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser }) => {
       {isStaffOrSuperuser && (
         <a href="#" className="menu-subcategory-link">ユーザー管理</a>
       )}
+      <a
+        href="#"
+        onClick={(e) => { e.preventDefault(); onVersionClick(); }}
+        className="menu-subcategory-link"
+      >
+        バージョン情報
+      </a>
       <form id="logout-form" action="#" method="post">
         <button type="submit" className="menu-logout-button">ログアウト</button>
       </form>

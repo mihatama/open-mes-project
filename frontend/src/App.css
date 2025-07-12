@@ -155,7 +155,7 @@ header {
 /* Main Content Styles */
 .main-contents {
     background-color: #fff;
-    padding: 2rem;
+    padding: 1rem;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -168,7 +168,7 @@ header {
 }
 
 .top-page-container {
-    padding: 15px 20px; /* 上下のpaddingを少し減らす */
+    /* このコンテナのパディングは、親要素の .main-contents で管理されるため不要です。 */
 }
 .top-page-container h2 {
     text-align: center;
@@ -177,7 +177,7 @@ header {
     font-size: 1.8em;
 }
 .menu-section {
-    margin-bottom: 20px; /* 各セクション間のマージンを減らす */
+    margin-bottom: 15px; /* 各セクション間のマージンを減らす */
     padding: 12px 15px; /* セクション内の上下paddingを少し減らす */
     background-color: #FFFFFF; /* 白背景 */
     border: 1px solid #E2E8F0; /* 薄いボーダー */

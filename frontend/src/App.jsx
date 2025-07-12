@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import Header from './components/Header';
 import SideMenu from './components/SideMenu';
+import VersionModal from './components/VersionModal';
 
 function App() {
   // TODO: Replace with actual authentication state
   const isAuthenticated = true;
   const isStaffOrSuperuser = true;
   const [isMenuOpen, setMenuOpen] = useState(false);
+  const [isVersionModalOpen, setVersionModalOpen] = useState(false);
 
   const toggleMenu = () => {
     setMenuOpen(!isMenuOpen);
@@ -32,7 +34,11 @@ function App() {
       <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       {isAuthenticated && (
         <>
-          <SideMenu isOpen={isMenuOpen} isStaffOrSuperuser={isStaffOrSuperuser} />
+          <SideMenu
+            isOpen={isMenuOpen}
+            isStaffOrSuperuser={isStaffOrSuperuser}
+            onVersionClick={() => setVersionModalOpen(true)}
+          />
           {isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
         </>
       )}
@@ -108,6 +114,7 @@ function App() {
           </div>
         </main>
       </div>
+      <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />
     </>
   )
 }
