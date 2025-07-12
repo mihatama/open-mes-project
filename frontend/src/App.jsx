@@ -22,6 +22,10 @@ function App() {
     setMenuOpen(!isMenuOpen);
   };
 
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
   useEffect(() => {
     // Add or remove class from body to prevent scrolling when menu is open
     if (isMenuOpen) {
@@ -45,6 +49,7 @@ function App() {
             isOpen={isMenuOpen}
             isStaffOrSuperuser={isStaffOrSuperuser}
             onVersionClick={() => setVersionModalOpen(true)}
+            onLinkClick={closeMenu}
           />
           {isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
         </>
