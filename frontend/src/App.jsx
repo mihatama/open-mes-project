@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
-import Header from './components/Header';
-import SideMenu from './components/SideMenu';
-import VersionModal from './components/VersionModal';
+import Header from './components/Header.jsx';
+import SideMenu from './components/SideMenu.jsx';
+import VersionModal from './components/VersionModal.jsx';
+import TopPage from './pages/TopPage.jsx';
+import InventoryInquiry from './pages/InventoryInquiry.jsx';
+import StockMovementHistory from './pages/StockMovementHistory.jsx';
+import ShipmentSchedule from './pages/ShipmentSchedule.jsx';
+import GoodsReceipt from './pages/GoodsReceipt.jsx';
+import GoodsIssue from './pages/GoodsIssue.jsx';
 
 function App() {
   // TODO: Replace with actual authentication state
@@ -30,7 +37,7 @@ function App() {
   }, [isMenuOpen]);
 
   return (
-    <>
+    <Router>
       <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       {isAuthenticated && (
         <>
@@ -44,78 +51,20 @@ function App() {
       )}
       <div className="container">
         <main className="main-contents">
-          <div className="top-page-container">
-            <div className="menu-section">
-              <h3>在庫管理</h3>
-              <ul>
-                <li><a href="#">在庫照会</a></li>
-                <li><a href="#">入出庫履歴</a></li>
-                <li><a href="#">出庫予定</a></li>
-                <li><a href="#">入庫処置</a></li>
-                <li><a href="#">出庫処理</a></li>
-              </ul>
-            </div>
-
-            <div className="menu-section">
-              <h3>生産管理</h3>
-              <ul>
-                <li><a href="#">生産計画</a></li>
-                <li><a href="#">使用部品</a></li>
-                <li><a href="#">材料引当</a></li>
-                <li><a href="#">作業進捗</a></li>
-              </ul>
-            </div>
-
-            <div className="menu-section">
-              <h3>品質管理</h3>
-              <ul>
-                <li><a href="#">工程内検査</a></li>
-                <li><a href="#">受入検査</a></li>
-                <li><a href="#">マスター作成</a></li>
-              </ul>
-            </div>
-
-            <div className="menu-section">
-              <h3>設備管理</h3>
-              <ul>
-                <li><a href="#">始業点検</a></li>
-                <li><a href="#">点検履歴</a></li>
-                <li><a href="#">マスター作成</a></li>
-              </ul>
-            </div>
-
-            <div className="menu-section">
-              <h3>データメンテナンス</h3>
-              <ul>
-                <li><a href="#">データ投入</a></li>
-              </ul>
-            </div>
-
-            <div className="menu-section">
-              <h3>アカウント</h3>
-              <ul>
-                {isAuthenticated ? (
-                  <>
-                    <li><a href="#">ユーザー設定</a></li>
-                    {isStaffOrSuperuser && (
-                      <li><a href="#">ユーザー管理</a></li>
-                    )}
-                    <li>
-                      <form id="logout-form-top" action="#" method="post" style={{ display: 'inline' }}>
-                        <button type="submit" className="link-button">ログアウト</button>
-                      </form>
-                    </li>
-                  </>
-                ) : (
-                  <li><a href="#">ログイン</a></li>
-                )}
-              </ul>
-            </div>
-          </div>
+          <Routes>
+            <Route path="/" element={<TopPage isAuthenticated={isAuthenticated} isStaffOrSuperuser={isStaffOrSuperuser} />} />
+            {/* Inventory Management */}
+            <Route path="/inventory/inquiry" element={<InventoryInquiry />} />
+            <Route path="/inventory/stock-movement-history" element={<StockMovementHistory />} />
+            <Route path="/inventory/shipment" element={<ShipmentSchedule />} />
+            <Route path="/inventory/purchase" element={<GoodsReceipt />} />
+            <Route path="/inventory/issue" element={<GoodsIssue />} />
+            {/* TODO: Add routes for other pages */}
+          </Routes>
         </main>
       </div>
       <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />
-    </>
+    </Router>
   )
 }
 
