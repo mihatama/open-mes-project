@@ -48,6 +48,11 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
 ]
 
+# CORS設定: Vite開発サーバーからのAPIリクエストを許可
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -57,6 +62,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Third-party apps
+    'corsheaders',
+    'django_vite',
     'users.apps.UsersConfig',
     'django_static_md5url',
     'production.apps.ProductionConfig',
@@ -72,8 +80,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'mobile.middleware.AutoMobileRedirectMiddleware', # Automatically redirect mobile users
@@ -150,8 +160,25 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_DIR = os.path.join(BASE_DIR, "static")
 STATIC_URL = '/static/'
+
+# `collectstatic` が静的ファイルを集める場所 (本番環境用)
+STATIC_ROOT = BASE_DIR.parent / "staticfiles"
+
+# `manage.py findstatic` が探す追加の静的ファイルディレクトリ
+STATICFILES_DIRS = [
+    # プロジェクト共通の静的ファイル置き場
+    BASE_DIR / "static",
+]
+
+# Vite (django-vite) と WhiteNoise の設定
+# ------------------------------------------------------------------------------
+# Viteのビルド成果物が出力されるパス (例: /backend/frontend/dist)
+DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent / "frontend" / "dist"
+DJANGO_VITE_DEV_MODE = DEBUG
+
+# Viteのビルドディレクトリを静的ファイルの探索対象に追加
+STATICFILES_DIRS.append(DJANGO_VITE_ASSETS_PATH)
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
@@ -161,13 +188,9 @@ REST_FRAMEWORK = {
     ]
 }
 
-if DEBUG == True:
-    STATICFILES_DIRS = [
-        os.path.join(BASE_DIR, "static")
-    ]
-
-else:
-    STATIC_ROOT = STATIC_DIR
+# 本番環境ではWhiteNoiseが圧縮ファイルを配信できるように設定
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
