@@ -1,0 +1,33 @@
+services:
+  db:
+    build: ./db/image
+    container_name: db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=open_mes
+      - POSTGRES_USER=django
+      - POSTGRES_PASSWORD=django
+    ports:
+      - "5432:5432"
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend/image
+      dockerfile: Dockerfile
+    command: >
+      sh -c "./wait-for-it.sh db:5432 --timeout=30 --
+             python manage.py migrate &&
+             gunicorn base.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./backend/scr:/open_mes
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/scr/.env
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
