@@ -1,42 +1,236 @@
+/* --- Styles from base.html for Layout --- */
+body.menu-open-no-scroll {
+    overflow: hidden;
+}
+
+/* Header Styles */
+header {
+    background-color: #007bff; /* Blue */
+    color: #fff;
+    padding: 0.4rem 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: sticky; /* Make header sticky */
+    top: 0;
+    z-index: 1101;
+}
+
+#title {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: bold;
+}
+
+/* Hamburger Menu Icon */
+#hamburger-menu {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 28px;
+    height: 22px;
+    cursor: pointer;
+    z-index: 1102;
+}
+
+#hamburger-menu span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background-color: #fff;
+    border-radius: 3px;
+    transition: all 0.3s ease-in-out;
+}
+
+#hamburger-menu.open span:nth-child(1) {
+    transform: rotate(45deg) translate(4px, 4px);
+}
+#hamburger-menu.open span:nth-child(2) {
+    opacity: 0;
+}
+#hamburger-menu.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -5px);
+}
+
+/* Slide-out Menu Bar Styles */
+#menu-bar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 250px;
+    height: 100%;
+    background-color: #343a40;
+    padding: 60px 15px 20px; /* Top padding to clear header */
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    z-index: 1100;
+    transition: left 0.3s ease-in-out;
+    overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+}
+
+#menu-bar.open {
+    left: 0;
+}
+
+#menu-bar a {
+    color: #fff;
+    text-decoration: none;
+    padding: 5px 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    display: block;
+}
+
+#menu-bar form#logout-form {
+    margin: 0;
+    padding: 0;
+}
+
+#menu-bar a:hover {
+    background-color: #555;
+}
+
+.menu-category-title {
+    color: #cccccc;
+    padding: 8px 15px;
+    display: block;
+    font-weight: bold;
+    font-size: 1.1em;
+    border-top: 1px solid #495057;
+    margin-top: 8px;
+}
+
+#menu-bar > .menu-category-title:first-of-type {
+    border-top: none;
+    margin-top: 0;
+}
+
+.menu-subcategory-link {
+    padding-left: 30px !important;
+    font-size: 0.95em;
+}
+
+.menu-logout-button {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 5px 15px;
+    border-radius: 5px;
+    text-align: left;
+    width: 100%;
+    font-size: inherit;
+    font-family: inherit;
+    display: block;
+}
+
+#menu-bar > form#logout-form {
+    border-top: 1px solid #495057;
+    margin-top: 8px;
+}
+
+/* Menu Overlay */
+#menu-overlay {
+    display: block;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1099;
+}
+
+/* Container Styles */
+.container {
+    /* Re-introduce max-width and auto margin to center the content */
+    max-width: 1400px;
+    margin: 1.5rem auto;
+    flex-grow: 1;
+    padding: 0 1rem;
+}
+
+/* Main Content Styles */
+.main-contents {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* --- End of styles from base.html --- */
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  text-align: left;
+  /* padding is now handled by .container and .main-contents */
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.top-page-container {
+    padding: 15px 20px; /* 上下のpaddingを少し減らす */
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+.top-page-container h2 {
+    text-align: center;
+    margin-bottom: 20px; /* h2の下マージンを減らす */
+    color: #4A5568;
+    font-size: 1.8em;
 }
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.menu-section {
+    margin-bottom: 20px; /* 各セクション間のマージンを減らす */
+    padding: 12px 15px; /* セクション内の上下paddingを少し減らす */
+    background-color: #FFFFFF; /* 白背景 */
+    border: 1px solid #E2E8F0; /* 薄いボーダー */
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.menu-section h3 {
+    margin-top: 0;
+    margin-bottom: 8px; /* h3の下マージンを減らす */
+    color: #007bff;
+    border-bottom: 2px solid #007bff; /* タイトルの下線を強調 */
+    padding-bottom: 6px; /* h3の下paddingを減らす */
+    font-size: 1.3em;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.menu-section ul {
+    list-style-type: none;
+    padding-left: 0;
+    display: flex; /* 小項目を横並びにする */
+    flex-wrap: wrap; /* 画面幅に応じて折り返す */
+    gap: 10px 15px; /* 縦方向のgapを少し減らし、横方向は維持 */
 }
-
-.card {
-  padding: 2em;
+.menu-section ul li {
+    /* margin-bottom: 8px; Flexboxのgapプロパティで間隔を調整するため不要に */
+    /* 各リンクアイテムのスタイル調整のため、li自体にもスタイルを適用できるようにする */
 }
-
-.read-the-docs {
-  color: #888;
+.menu-section ul li a {
+    text-decoration: none;
+    color: #0056b3;
+    background-color: #EBF8FF;
+    padding: 6px 10px; /* リンクの上下paddingを少し減らす */
+    border-radius: 4px; /* 角を丸める */
+    border: 1px solid #BEE3F8; /* 薄い青のボーダー */
+    transition: all 0.2s ease-in-out; /* トランジションをallに */
+    display: inline-block; /* paddingなどを正しく適用するため */
+    font-size: 0.95em;
+}
+.menu-section ul li a:hover, .link-button:hover {
+    color: #003d82;
+    background-color: #C3DAFE; /* ホバー時の背景色 */
+    border-color: #A3BFFA; /* ホバー時のボーダー色 */
+    text-decoration: none; /* 下線は不要に */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* ホバー時に軽い影 */
+}
+.link-button {
+    background-color: #EBF8FF; /* Matches link background */
+    border: 1px solid #BEE3F8; /* Matches link border */
+    border-radius: 4px; /* Matches link border-radius */
+    color: #0056b3; /* Kept existing color */
+    cursor: pointer; /* Kept existing cursor */
+    display: inline-block; /* Changed for better padding/border handling, like links */
+    font: inherit; /* Inherits base font properties */
+    font-size: 0.95em; /* Matches link font size */
+    padding: 6px 10px; /* Matches link padding */
+    text-decoration: none; /* Kept existing text-decoration */
+    transition: all 0.2s ease-in-out; /* Matches link transition for hover effects */
 }
