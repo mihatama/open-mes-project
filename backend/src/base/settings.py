@@ -42,8 +42,11 @@ DEBUG_TOOLBAR_CONFIG = {
     "FETCH_INSTRUMENTATION_ENABLED": False,
 }
 
-if env.list('CSRF_TRUSTED_ORIGINS') != ['*']:
-    CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS')
+# フロントエンドのオリジンを信頼する設定
+# これにより、Vite開発サーバー(localhost:5173)からのPOSTリクエストが許可されます。
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+]
 
 # Application definition
 

@@ -24,12 +24,71 @@ import DataImport from './pages/DataImport.jsx';
 import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
 
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 function App() {
-  // TODO: Replace with actual authentication state
-  const isAuthenticated = true;
-  const isStaffOrSuperuser = true;
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isStaffOrSuperuser, setIsStaffOrSuperuser] = useState(false);
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [isVersionModalOpen, setVersionModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // ローディング状態を追加
+
+  useEffect(() => {
+    // アプリケーションのロード時にセッション情報を確認し、CSRFトークンを取得
+    const checkAuthStatus = async () => {
+      try {
+        const response = await fetch('/api/users/session/');
+        if (response.ok) {
+          const data = await response.json();
+          setIsAuthenticated(data.isAuthenticated);
+          setIsStaffOrSuperuser(data.isStaff || data.isSuperuser);
+        } else {
+          // ログインページにリダイレクト、または認証されていない状態として続行
+          setIsAuthenticated(false);
+          setIsStaffOrSuperuser(false);
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        setIsAuthenticated(false);
+        setIsStaffOrSuperuser(false);
+      } finally {
+        setIsLoading(false); // ローディング完了
+      }
+    };
+
+    checkAuthStatus();
+  }, []); // 空の依存配列で、コンポーネントのマウント時に一度だけ実行
+
+  const handleLogout = async () => {
+    const csrfToken = getCookie('csrftoken');
+    const response = await fetch('/api/users/logout/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+      },
+    });
+
+    if (response.ok) {
+      window.location.href = '/'; // Redirect to home and reload
+    } else {
+      // エラー時にもう少し詳しい情報を表示
+      const data = await response.json().catch(() => ({}));
+      alert(`Logout failed: ${data.message || 'Server error'}`);
+    }
+  };
 
   const toggleMenu = () => {
     setMenuOpen(!isMenuOpen);
@@ -53,6 +112,10 @@ function App() {
     };
   }, [isMenuOpen]);
 
+  if (isLoading) {
+    return <div>Loading...</div>; // またはスピナーなどを表示
+  }
+
   return (
     <Router>
       <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
@@ -63,6 +126,7 @@ function App() {
             isStaffOrSuperuser={isStaffOrSuperuser}
             onVersionClick={() => setVersionModalOpen(true)}
             onLinkClick={closeMenu}
+            onLogout={handleLogout}
           />
           {isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
         </>
@@ -70,7 +134,7 @@ function App() {
       <div className="container">
         <main className="main-contents">
           <Routes>
-            <Route path="/" element={<TopPage isAuthenticated={isAuthenticated} isStaffOrSuperuser={isStaffOrSuperuser} />} />
+            <Route path="/" element={<TopPage isAuthenticated={isAuthenticated} isStaffOrSuperuser={isStaffOrSuperuser} onLogout={handleLogout} />} />
             {/* Inventory Management */}
             <Route path="/inventory/inquiry" element={<InventoryInquiry />} />
             <Route path="/inventory/stock-movement-history" element={<StockMovementHistory />} />

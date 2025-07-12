@@ -1,24 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-// Helper function to get CSRF token from cookies
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
+const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick, onLogout }) => {
+  const handleLogoutClick = (e) => {
+    e.preventDefault();
+    onLinkClick(); // Close menu on click
+    onLogout();
+  };
 
-const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick }) => {
-  const csrfToken = getCookie('csrftoken');
   return (
     <nav id="menu-bar" className={isOpen ? 'open' : ''}>
       <Link to="/" onClick={onLinkClick}>トップページ</Link>
@@ -60,10 +49,7 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick }) =
       >
         バージョン情報
       </a>
-      <form id="logout-form" action="/users/logout/" method="post">
-        {csrfToken && <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken} />}
-        <button type="submit" className="menu-logout-button" onClick={onLinkClick}>ログアウト</button>
-      </form>
+      <button onClick={handleLogoutClick} className="menu-logout-button">ログアウト</button>
     </nav>
   );
 };

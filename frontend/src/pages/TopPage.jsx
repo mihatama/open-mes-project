@@ -1,23 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
-const TopPage = ({ isAuthenticated, isStaffOrSuperuser }) => {
-  const csrfToken = getCookie('csrftoken');
+const TopPage = ({ isAuthenticated, isStaffOrSuperuser, onLogout }) => {
   return (
     <div className="top-page-container">
       <div className="menu-section">
@@ -76,10 +60,7 @@ const TopPage = ({ isAuthenticated, isStaffOrSuperuser }) => {
                 <li><Link to="/user/management">ユーザー管理</Link></li>
               )}
               <li>
-                <form id="logout-form-top" action="/users/logout/" method="post" style={{ display: 'inline' }}>
-                  {csrfToken && <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken} />}
-                  <button type="submit" className="link-button">ログアウト</button>
-                </form>
+                <button type="button" onClick={onLogout} className="link-button">ログアウト</button>
               </li>
             </>
           ) : (

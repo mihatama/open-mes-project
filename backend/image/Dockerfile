@@ -1,16 +1,17 @@
 FROM python:3.11-buster
 
-RUN apt update && apt -y upgrade
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python \
+    sqlite3 \
+    curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリの作成
 RUN mkdir /open_mes
 
 # カレントディレクトリにある資産をコンテナ上の指定のディレクトリにコピーする
 COPY ./requirements.txt ./requirements.txt
-
-# pipでrequirements.txtに指定されているパッケージを追加する
-RUN apt install -y build-essential python
-RUN apt install -y sqlite3
 RUN pip install --upgrade pip
 RUN pip install --upgrade setuptools
 RUN pip install -r requirements.txt
