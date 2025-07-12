@@ -1,7 +1,24 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+// Helper function to get CSRF token from cookies
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick }) => {
+  const csrfToken = getCookie('csrftoken');
   return (
     <nav id="menu-bar" className={isOpen ? 'open' : ''}>
       <Link to="/" onClick={onLinkClick}>トップページ</Link>
@@ -13,28 +30,28 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick }) =
       <Link to="/inventory/issue" className="menu-subcategory-link" onClick={onLinkClick}>出庫処理</Link>
 
       <div className="menu-category-title">生産管理</div>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>生産計画</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>使用部品</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>材料引当</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>作業進捗</a>
+      <Link to="/production/plan" className="menu-subcategory-link" onClick={onLinkClick}>生産計画</Link>
+      <Link to="/production/parts-used" className="menu-subcategory-link" onClick={onLinkClick}>使用部品</Link>
+      <Link to="/production/material-allocation" className="menu-subcategory-link" onClick={onLinkClick}>材料引当</Link>
+      <Link to="/production/work-progress" className="menu-subcategory-link" onClick={onLinkClick}>作業進捗</Link>
 
       <div className="menu-category-title">品質管理</div>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>工程内検査</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>受入検査</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>マスター作成</a>
+      <Link to="/quality/process-inspection" className="menu-subcategory-link" onClick={onLinkClick}>工程内検査</Link>
+      <Link to="/quality/acceptance-inspection" className="menu-subcategory-link" onClick={onLinkClick}>受入検査</Link>
+      <Link to="/quality/master-creation" className="menu-subcategory-link" onClick={onLinkClick}>マスター作成</Link>
 
       <div className="menu-category-title">設備管理</div>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>始業点検</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>点検履歴</a>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>マスター作成</a>
+      <Link to="/machine/start-inspection" className="menu-subcategory-link" onClick={onLinkClick}>始業点検</Link>
+      <Link to="/machine/inspection-history" className="menu-subcategory-link" onClick={onLinkClick}>点検履歴</Link>
+      <Link to="/machine/master-creation" className="menu-subcategory-link" onClick={onLinkClick}>マスター作成</Link>
 
       <div className="menu-category-title">データメンテナンス</div>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>データ投入</a>
+      <Link to="/data/import" className="menu-subcategory-link" onClick={onLinkClick}>データ投入</Link>
 
       <div className="menu-category-title">アカウント設定</div>
-      <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー設定</a>
+      <Link to="/user/settings" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー設定</Link>
       {isStaffOrSuperuser && (
-        <a href="#" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー管理</a>
+        <Link to="/user/management" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー管理</Link>
       )}
       <a
         href="#"
@@ -43,7 +60,8 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick }) =
       >
         バージョン情報
       </a>
-      <form id="logout-form" action="#" method="post">
+      <form id="logout-form" action="/users/logout/" method="post">
+        {csrfToken && <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken} />}
         <button type="submit" className="menu-logout-button" onClick={onLinkClick}>ログアウト</button>
       </form>
     </nav>

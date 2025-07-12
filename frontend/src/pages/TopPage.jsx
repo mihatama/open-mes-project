@@ -1,7 +1,23 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 const TopPage = ({ isAuthenticated, isStaffOrSuperuser }) => {
+  const csrfToken = getCookie('csrftoken');
   return (
     <div className="top-page-container">
       <div className="menu-section">
@@ -18,35 +34,35 @@ const TopPage = ({ isAuthenticated, isStaffOrSuperuser }) => {
       <div className="menu-section">
         <h3>生産管理</h3>
         <ul>
-          <li><a href="#">生産計画</a></li>
-          <li><a href="#">使用部品</a></li>
-          <li><a href="#">材料引当</a></li>
-          <li><a href="#">作業進捗</a></li>
+          <li><Link to="/production/plan">生産計画</Link></li>
+          <li><Link to="/production/parts-used">使用部品</Link></li>
+          <li><Link to="/production/material-allocation">材料引当</Link></li>
+          <li><Link to="/production/work-progress">作業進捗</Link></li>
         </ul>
       </div>
 
       <div className="menu-section">
         <h3>品質管理</h3>
         <ul>
-          <li><a href="#">工程内検査</a></li>
-          <li><a href="#">受入検査</a></li>
-          <li><a href="#">マスター作成</a></li>
+          <li><Link to="/quality/process-inspection">工程内検査</Link></li>
+          <li><Link to="/quality/acceptance-inspection">受入検査</Link></li>
+          <li><Link to="/quality/master-creation">マスター作成</Link></li>
         </ul>
       </div>
 
       <div className="menu-section">
         <h3>設備管理</h3>
         <ul>
-          <li><a href="#">始業点検</a></li>
-          <li><a href="#">点検履歴</a></li>
-          <li><a href="#">マスター作成</a></li>
+          <li><Link to="/machine/start-inspection">始業点検</Link></li>
+          <li><Link to="/machine/inspection-history">点検履歴</Link></li>
+          <li><Link to="/machine/master-creation">マスター作成</Link></li>
         </ul>
       </div>
 
       <div className="menu-section">
         <h3>データメンテナンス</h3>
         <ul>
-          <li><a href="#">データ投入</a></li>
+          <li><Link to="/data/import">データ投入</Link></li>
         </ul>
       </div>
 
@@ -55,12 +71,13 @@ const TopPage = ({ isAuthenticated, isStaffOrSuperuser }) => {
         <ul>
           {isAuthenticated ? (
             <>
-              <li><a href="#">ユーザー設定</a></li>
+              <li><Link to="/user/settings">ユーザー設定</Link></li>
               {isStaffOrSuperuser && (
-                <li><a href="#">ユーザー管理</a></li>
+                <li><Link to="/user/management">ユーザー管理</Link></li>
               )}
               <li>
-                <form id="logout-form-top" action="#" method="post" style={{ display: 'inline' }}>
+                <form id="logout-form-top" action="/users/logout/" method="post" style={{ display: 'inline' }}>
+                  {csrfToken && <input type="hidden" name="csrfmiddlewaretoken" value={csrfToken} />}
                   <button type="submit" className="link-button">ログアウト</button>
                 </form>
               </li>
