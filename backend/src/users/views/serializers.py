@@ -67,3 +67,41 @@ class CustomUserSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', '')
         )
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user management in the admin interface.
+    Handles list, retrieve, create, and update operations.
+    """
+    # Password is write-only and not required for updates.
+    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'id', 'custom_id', 'username', 'email',
+            'is_staff', 'is_active', 'date_joined', 'password'
+        ]
+        read_only_fields = ['date_joined']
+
+    def create(self, validated_data):
+        """
+        Create a new user with a password.
+        """
+        password = validated_data.pop('password', None)
+        if not password:
+            raise serializers.ValidationError({'password': 'Password is required for new users.'})
+        
+        user = CustomUser.objects.create_user(**validated_data, password=password)
+        return user
+
+    def update(self, instance, validated_data):
+        """
+        Update user instance. Handle password change separately.
+        """
+        password = validated_data.pop('password', None)
+        instance = super().update(instance, validated_data)
+        if password:
+            instance.set_password(password)
+            instance.save(update_fields=['password', 'password_last_changed'])
+        return instance

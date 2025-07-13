@@ -1,9 +1,9 @@
-from rest_framework import status
+from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from .serializers import CustomUserSerializer, CustomAuthTokenSerializer
+from .serializers import CustomUserSerializer, CustomAuthTokenSerializer, AdminUserSerializer
 from django.contrib.auth import login, logout
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 
+from ..models import CustomUser
 @api_view(['POST'])
 def register_user(request):
     serializer = CustomUserSerializer(data=request.data)
@@ -78,3 +79,20 @@ def get_session_info(request):
         'isSuperuser': request.user.is_superuser,
         'username': request.user.username,
     })
+
+
+class IsStaffOrSuperuser(permissions.BasePermission):
+    """
+    Allows access only to staff or superusers.
+    """
+    def has_permission(self, request, view):
+        return request.user and (request.user.is_staff or request.user.is_superuser)
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows users to be viewed or edited.
+    Accessible only by staff members.
+    """
+    queryset = CustomUser.objects.all().order_by('-date_joined')
+    serializer_class = AdminUserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrSuperuser]
