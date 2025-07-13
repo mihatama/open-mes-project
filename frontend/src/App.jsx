@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { getCookie } from './utils/cookies.js';
 import Header from './components/Header.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -26,21 +27,6 @@ import DataImport from './pages/DataImport.jsx';
 import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
 
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
-
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isStaffOrSuperuser, setIsStaffOrSuperuser] = useState(false);
@@ -48,53 +34,48 @@ function App() {
   const [isVersionModalOpen, setVersionModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // ローディング状態を追加
 
-  useEffect(() => {
-    // アプリケーションのロード時にセッション情報を確認
-    const checkAuthStatus = async () => {
-      try {
-        const response = await fetch('/api/users/session/');
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(data.isAuthenticated);
-          setIsStaffOrSuperuser(data.isStaff || data.isSuperuser);
-        } else {
-          // ログインページにリダイレクト、または認証されていない状態として続行
-          setIsAuthenticated(false);
-          setIsStaffOrSuperuser(false);
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
+  const checkAuthStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users/session/');
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(data.isAuthenticated);
+        setIsStaffOrSuperuser(data.isStaff || data.isSuperuser);
+      } else {
+        // ログインページにリダイレクト、または認証されていない状態として続行
         setIsAuthenticated(false);
         setIsStaffOrSuperuser(false);
-      } finally {
-        setIsLoading(false); // ローディング完了
       }
-    };
+    } catch (error) {
+      console.error('Authentication check failed:', error);
+      setIsAuthenticated(false);
+      setIsStaffOrSuperuser(false);
+    } finally {
+      setIsLoading(false); // ローディング完了
+    }
+  }, []); // stateのセッター関数は依存配列に含める必要はありません
 
+  useEffect(() => {
+    // アプリケーションのロード時にセッション情報を確認
     checkAuthStatus();
-  }, []); // 空の依存配列で、コンポーネントのマウント時に一度だけ実行
+  }, [checkAuthStatus]); // コンポーネントのマウント時に一度だけ実行
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
     // ログイン成功後に認証状態を再チェック
-    checkAuthStatus();
+    await checkAuthStatus();
   };
 
   const handleLogout = async () => {
     const csrfToken = getCookie('csrftoken');
-    const response = await fetch('/api/users/logout/', {
+    await fetch('/api/users/logout/', {
       method: 'POST',
       headers: {
         'X-CSRFToken': csrfToken,
       },
     });
-
-    if (response.ok) {
-      window.location.href = '/'; // Redirect to home and reload
-    } else {
-      // エラー時にもう少し詳しい情報を表示
-      const data = await response.json().catch(() => ({}));
-      alert(`Logout failed: ${data.message || 'Server error'}`);
-    }
+    // 状態を更新して、UI側でリダイレクトをハンドリングさせる
+    setIsAuthenticated(false);
+    setIsStaffOrSuperuser(false);
   };
 
   const toggleMenu = () => {
@@ -143,7 +124,7 @@ function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />} />
 
           {/* Protected Routes */}
-          <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} /></ProtectedRoute>} />
+          <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} isAuthenticated={isAuthenticated} onLogout={handleLogout} /></ProtectedRoute>} />
           {/* Inventory Management */}
           <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
           <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />

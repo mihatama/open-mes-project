@@ -1,21 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './LoginPage.css'; // Add some basic styling
-
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
+import { getCookie } from '../utils/cookies.js';
 
 const LoginPage = ({ onLoginSuccess }) => {
   const [customId, setCustomId] = useState('');
@@ -49,8 +35,9 @@ const LoginPage = ({ onLoginSuccess }) => {
       });
 
       if (response.ok) {
-        onLoginSuccess();
-        navigate(from, { replace: true });
+        // ログイン成功後、親コンポーネント(App.jsx)が状態を更新し、
+        // 自動的にリダイレクト処理を行うため、ここでのnavigateは不要です。
+        await onLoginSuccess();
       } else {
         // Parse error message from backend for more detailed feedback
         const data = await response.json().catch(() => null);
