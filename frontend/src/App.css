@@ -63,6 +63,7 @@ header {
     width: 250px;
     height: 100%;
     background-color: #343a40;
+    box-sizing: border-box;
     padding: 60px 15px 20px; /* Top padding to clear header */
     display: flex;
     flex-direction: column;
