@@ -1,9 +1,10 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token # Import Token model
-from .serializers import CustomUserSerializer
-from django.contrib.auth import logout
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
+from .serializers import CustomUserSerializer, CustomAuthTokenSerializer
+from django.contrib.auth import login, logout
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.http import JsonResponse
@@ -21,6 +22,26 @@ def register_user(request):
             'token': token.key # Include token in the response
         }, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CustomObtainAuthToken(ObtainAuthToken):
+    """
+    Custom token authentication view that uses our custom serializer.
+    This allows the API to explicitly expect 'custom_id' instead of 'username'.
+    """
+    serializer_class = CustomAuthTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        # 認証成功時にセッションを開始する
+        login(request, user)
+        token, created = Token.objects.get_or_create(user=user)
+        user_data = CustomUserSerializer(user).data
+        return Response({
+            'token': token.key,
+            'user': user_data
+        })
 
 class APILogoutView(APIView):
     """

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import Header from './components/Header.jsx';
 import SideMenu from './components/SideMenu.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import VersionModal from './components/VersionModal.jsx';
 import TopPage from './pages/TopPage.jsx';
 import InventoryInquiry from './pages/InventoryInquiry.jsx';
@@ -47,7 +49,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true); // ローディング状態を追加
 
   useEffect(() => {
-    // アプリケーションのロード時にセッション情報を確認し、CSRFトークンを取得
+    // アプリケーションのロード時にセッション情報を確認
     const checkAuthStatus = async () => {
       try {
         const response = await fetch('/api/users/session/');
@@ -71,6 +73,11 @@ function App() {
 
     checkAuthStatus();
   }, []); // 空の依存配列で、コンポーネントのマウント時に一度だけ実行
+
+  const handleLoginSuccess = () => {
+    // ログイン成功後に認証状態を再チェック
+    checkAuthStatus();
+  };
 
   const handleLogout = async () => {
     const csrfToken = getCookie('csrftoken');
@@ -118,50 +125,55 @@ function App() {
 
   return (
     <Router>
-      <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       {isAuthenticated && (
-        <>
-          <SideMenu
-            isOpen={isMenuOpen}
-            isStaffOrSuperuser={isStaffOrSuperuser}
-            onVersionClick={() => setVersionModalOpen(true)}
-            onLinkClick={closeMenu}
-            onLogout={handleLogout}
-          />
-          {isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
-        </>
+        <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       )}
-      <div className="container">
-        <main className="main-contents">
-          <Routes>
-            <Route path="/" element={<TopPage isAuthenticated={isAuthenticated} isStaffOrSuperuser={isStaffOrSuperuser} onLogout={handleLogout} />} />
-            {/* Inventory Management */}
-            <Route path="/inventory/inquiry" element={<InventoryInquiry />} />
-            <Route path="/inventory/stock-movement-history" element={<StockMovementHistory />} />
-            <Route path="/inventory/shipment" element={<ShipmentSchedule />} />
-            <Route path="/inventory/purchase" element={<GoodsReceipt />} />
-            <Route path="/inventory/issue" element={<GoodsIssue />} />
-            {/* Production Management */}
-            <Route path="/production/plan" element={<ProductionPlan />} />
-            <Route path="/production/parts-used" element={<PartsUsed />} />
-            <Route path="/production/material-allocation" element={<MaterialAllocation />} />
-            <Route path="/production/work-progress" element={<WorkProgress />} />
-            {/* Quality Management */}
-            <Route path="/quality/process-inspection" element={<ProcessInspection />} />
-            <Route path="/quality/acceptance-inspection" element={<AcceptanceInspection />} />
-            <Route path="/quality/master-creation" element={<QualityMasterCreation />} />
-            {/* Machine Management */}
-            <Route path="/machine/start-inspection" element={<StartInspection />} />
-            <Route path="/machine/inspection-history" element={<InspectionHistory />} />
-            <Route path="/machine/master-creation" element={<MachineMasterCreation />} />
-            {/* Data Maintenance & Account */}
-            <Route path="/data/import" element={<DataImport />} />
-            <Route path="/user/settings" element={<UserSettings />} />
-            {isStaffOrSuperuser && <Route path="/user/management" element={<UserManagement />} />}
-            {/* TODO: Add routes for other pages */}
-          </Routes>
-        </main>
-      </div>
+      {isAuthenticated && (
+        <SideMenu
+          isOpen={isMenuOpen}
+          isStaffOrSuperuser={isStaffOrSuperuser}
+          onVersionClick={() => setVersionModalOpen(true)}
+          onLinkClick={closeMenu}
+          onLogout={handleLogout}
+        />
+      )}
+      {isAuthenticated && isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
+      <main className={isAuthenticated ? "main-contents container" : ""}>
+        <Routes>
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />} />
+
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} /></ProtectedRoute>} />
+          {/* Inventory Management */}
+          <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
+          <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />
+          <Route path="/inventory/shipment" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ShipmentSchedule /></ProtectedRoute>} />
+          <Route path="/inventory/purchase" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsReceipt /></ProtectedRoute>} />
+          <Route path="/inventory/issue" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsIssue /></ProtectedRoute>} />
+          {/* Production Management */}
+          <Route path="/production/plan" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProductionPlan /></ProtectedRoute>} />
+          <Route path="/production/parts-used" element={<ProtectedRoute isAuthenticated={isAuthenticated}><PartsUsed /></ProtectedRoute>} />
+          <Route path="/production/material-allocation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MaterialAllocation /></ProtectedRoute>} />
+          <Route path="/production/work-progress" element={<ProtectedRoute isAuthenticated={isAuthenticated}><WorkProgress /></ProtectedRoute>} />
+          {/* Quality Management */}
+          <Route path="/quality/process-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProcessInspection /></ProtectedRoute>} />
+          <Route path="/quality/acceptance-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AcceptanceInspection /></ProtectedRoute>} />
+          <Route path="/quality/master-creation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><QualityMasterCreation /></ProtectedRoute>} />
+          {/* Machine Management */}
+          <Route path="/machine/start-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StartInspection /></ProtectedRoute>} />
+          <Route path="/machine/inspection-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InspectionHistory /></ProtectedRoute>} />
+          <Route path="/machine/master-creation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MachineMasterCreation /></ProtectedRoute>} />
+          {/* Data Maintenance & Account */}
+          <Route path="/data/import" element={<ProtectedRoute isAuthenticated={isAuthenticated}><DataImport /></ProtectedRoute>} />
+          <Route path="/user/settings" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UserSettings /></ProtectedRoute>} />
+          <Route
+            path="/user/management"
+            element={<ProtectedRoute isAuthenticated={isAuthenticated && isStaffOrSuperuser}><UserManagement /></ProtectedRoute>}
+          />
+          {/* Redirect any other path to top page if authenticated, or login if not */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </main>
       <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />
     </Router>
   )

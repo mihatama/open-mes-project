@@ -16,8 +16,6 @@ class UserManager(BaseUserManager):
     def _create_user(self, custom_id, email, password, **extra_fields):
         if not custom_id:
             raise ValueError('専用IDは必須です。')
-        # emailが必須でなくなったので、チェックを削除
-        # password_last_changed は set_password 内で設定される
         user = self.model(custom_id=custom_id, email=email, **extra_fields)
         # パスワードを設定（これにより password_last_changed も更新される）
         user.set_password(password)
@@ -38,11 +36,8 @@ class UserManager(BaseUserManager):
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('スーパーユーザーは is_superuser=True である必要があります。')
 
-        # スーパーユーザー作成時も _create_user を経由するので、
-        # password_last_changed は適切に設定される
-        # _create_user内でemailの正規化が行われるため、ここでは渡すだけでよい
-        normalized_email = self.normalize_email(email) if email else None
-        return self._create_user(custom_id, normalized_email, password, **extra_fields)
+        # email の正規化は CustomUser.save() で処理される
+        return self._create_user(custom_id, email, password, **extra_fields)
 
 # カスタムユーザー
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -99,6 +94,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         verbose_name = _('user')
         verbose_name_plural = _('users')
 
+    def __str__(self):
+        return self.custom_id
+
     def clean(self):
         super().clean()
         # emailがNoneの場合を考慮
@@ -116,6 +114,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if self.email:
             send_mail(subject, message, from_email, [self.email], **kwargs)
 
+    def save(self, *args, **kwargs):
+        """
+        保存前にemailフィールドを正規化し、空文字列をNoneに変換する。
+        """
+        if self.email:
+            self.email = self.__class__.objects.normalize_email(self.email)
+        else:
+            self.email = None
+        super().save(*args, **kwargs)
+
     # --- パスワード有効期限関連のメソッド追加 ---
     def set_password(self, raw_password):
         """
@@ -123,7 +131,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         """
         super().set_password(raw_password)
         self.password_last_changed = timezone.now()
-        self.save(update_fields=['password', 'password_last_changed'])
+        # set_password内では保存を行わないのがDjangoの慣例です。
+        # 保存は呼び出し元の責任で行います。
+        # if self.pk:
+        #     self.save(update_fields=['password', 'password_last_changed'])
 
     @property
     def is_password_expired(self):
@@ -131,7 +142,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         パスワードが有効期限切れかどうかを判定します。
         settings.PASSWORD_EXPIRATION_DAYS で日数を指定します（デフォルト90日）。
         """
-        expiration_days = getattr(settings, 'PASSWORD_EXPIRATION_DAYS', 90) # デフォルトを90日に設定
+        expiration_days = getattr(settings, 'PASSWORD_EXPIRATION_DAYS', 180) # settings.pyとデフォルト値を合わせる
 
         if expiration_days is None or expiration_days <= 0:
              # 有効期限が無効化されている場合は常に False
