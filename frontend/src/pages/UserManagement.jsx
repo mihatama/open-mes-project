@@ -89,8 +89,8 @@ const UserManagement = () => {
                 <Link to="/admin/users/create" className="btn btn-primary">新規ユーザー作成</Link>
             </div>
 
-            <table className="table table-striped table-hover">
-                <thead>
+            <table className="table table-striped table-bordered table-hover table-sm">
+                <thead className="table-light">
                     <tr>
                         <th>専用ID</th>
                         <th>ユーザー名</th>
