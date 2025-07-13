@@ -33,6 +33,7 @@
 }
 
 .login-form .form-control {
+  box-sizing: border-box;
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #ccc;
@@ -47,6 +48,7 @@
 }
 
 .login-form .btn-block {
+  box-sizing: border-box;
   width: 100%;
   padding: 0.75rem;
   font-size: 1.1rem;

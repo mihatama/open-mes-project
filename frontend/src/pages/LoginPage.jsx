@@ -64,15 +64,15 @@ const LoginPage = ({ onLoginSuccess }) => {
   return (
     <div className="login-page-container">
       <div className="login-card">
-        <h2 className="login-title">Log In</h2>
+        <h2 className="login-title">みんなのMES</h2>
         {error && <div className="alert alert-danger">{error}</div>}
         <form onSubmit={handleLogin} className="login-form">
           <div className="form-group">
-            <label htmlFor="custom_id">専用ID</label>
             <input
               type="text"
               id="custom_id"
               className="form-control"
+              placeholder="ID"
               value={customId}
               onChange={(e) => setCustomId(e.target.value)}
               required
@@ -80,19 +80,25 @@ const LoginPage = ({ onLoginSuccess }) => {
             />
           </div>
           <div className="form-group">
-            <label htmlFor="password">Password</label>
             <input
               type="password"
               id="password"
               className="form-control"
+              placeholder="パスワード"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary btn-block">
-            Log In
-          </button>
+          <div className="form-group">
+            <button
+              type="submit"
+              className="btn btn-primary btn-block"
+              style={{ backgroundColor: '#007bff', borderColor: '#007bff' }}
+            >
+              ログイン
+            </button>
+          </div>
         </form>
       </div>
     </div>
