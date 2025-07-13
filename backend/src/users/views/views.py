@@ -7,6 +7,8 @@ from django.contrib.auth.mixins import UserPassesTestMixin  # 追加
 from rest_framework.authtoken.models import Token
 from users.forms import UserProfileForm, CustomPasswordChangeForm, AdminUserCreationForm, AdminUserChangeForm # 作成したフォームをインポート
 from django.contrib.auth import get_user_model, update_session_auth_hash # update_session_auth_hash をインポート
+from django.http import JsonResponse
+import json
 
 CustomUser = get_user_model()
 
@@ -27,6 +29,17 @@ class UserSettingsView(LoginRequiredMixin, generic.View): # generic.View を継�
 
 
     def get(self, request, *args, **kwargs):
+        # ReactフロントエンドからのAPIリクエストかどうかを判定
+        if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+            user = request.user
+            data = {
+                'username': user.username,
+                'email': user.email,
+                'custom_id': user.custom_id,
+                'api_token': self.get_user_token(user),
+            }
+            return JsonResponse(data)
+
         profile_form = self.profile_form_class(instance=request.user)
         password_change_form = self.password_change_form_class(user=request.user)
         api_token = self.get_user_token(request.user)
@@ -41,43 +54,60 @@ class UserSettingsView(LoginRequiredMixin, generic.View): # generic.View を継�
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
-        form_type = request.POST.get('form_type')
+        is_api_request = 'application/json' in request.META.get('HTTP_ACCEPT', '')
+        
+        try:
+            if is_api_request and request.body:
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        form_type = data.get('form_type')
 
         if form_type == 'profile':
-            profile_form = self.profile_form_class(request.POST, instance=request.user)
-            if profile_form.is_valid():
-                profile_form.save()
+            form = self.profile_form_class(data, instance=request.user)
+            if form.is_valid():
+                form.save()
+                if is_api_request:
+                    return JsonResponse({'message': 'プロフィール情報が更新されました。'})
                 messages.success(request, 'プロフィール情報が更新されました。')
+                return redirect('users:users_settings')
             else:
+                if is_api_request:
+                    return JsonResponse(form.errors, status=400)
                 messages.error(request, 'プロフィールの更新に失敗しました。入力内容を確認してください。')
-            # フォーム処理後は常にリダイレクトしてGETリクエストを生成
-            return redirect('users:users_settings')
+                # Note: Redirect loses form error details. For template-based forms, rendering the context is better.
+                return redirect('users:users_settings')
 
         elif form_type == 'api_token':
-            if 'regenerate_token' in request.POST:
+            if data.get('regenerate_token'):
                 Token.objects.filter(user=request.user).delete()
-                # get_user_token は呼び出されるとトークンがなければ作成するので、ここで再取得するだけでよい
-                self.get_user_token(request.user)
-                messages.success(request, f'APIトークンが再生成されました。')
-            return redirect('users:users_settings')
+                new_token = self.get_user_token(request.user)
+                if is_api_request:
+                    return JsonResponse({'message': 'APIトークンが再生成されました。', 'api_token': new_token})
+                messages.success(request, 'APIトークンが再生成されました。')
+                return redirect('users:users_settings')
         
         elif form_type == 'password_change':
-            password_change_form = self.password_change_form_class(user=request.user, data=request.POST)
-            if password_change_form.is_valid():
-                user = password_change_form.save()
+            form = self.password_change_form_class(user=request.user, data=data)
+            if form.is_valid():
+                user = form.save()
                 update_session_auth_hash(request, user)  # パスワード変更後にセッションを更新
+                if is_api_request:
+                    return JsonResponse({'message': 'パスワードが正常に変更されました。'})
                 messages.success(request, 'パスワードが正常に変更されました。')
                 return redirect('users:users_settings')
             else:
+                if is_api_request:
+                    return JsonResponse(form.errors, status=400)
                 messages.error(request, 'パスワードの変更に失敗しました。入力内容を確認してください。')
-                # エラーがあったことをセッションに保存し、リダイレクト後にJSでモーダルを開く
                 request.session['password_change_form_has_errors'] = True
-                # エラーのあるフォームデータ自体はリダイレクトで失われるため、
-                # GET側でエラーフラグに基づいて空のフォームを再度表示し、エラーメッセージはmessagesフレームワークで表示する。
-                # より詳細なエラーフィールドをモーダル内に表示したい場合は、renderアプローチかAjaxが必要。
                 return redirect('users:users_settings')
 
-        # 不明なform_typeやPOST内容の場合は、単にリダイレクト
+        if is_api_request:
+            return JsonResponse({'error': 'Invalid form_type or action'}, status=400)
         return redirect('users:users_settings')
 
 class AdminUserManagementView(LoginRequiredMixin, UserPassesTestMixin, generic.TemplateView):

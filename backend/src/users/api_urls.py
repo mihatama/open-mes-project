@@ -1,6 +1,7 @@
 from django.urls import path, include
 # `users/views/rest.py` にビューを定義することを想定
 from .views import rest as rest_views
+from .views import views as general_views
 
 app_name = 'users_api'
 
@@ -9,6 +10,8 @@ urlpatterns = [
     path('login/', rest_views.CustomObtainAuthToken.as_view(), name='api_login'),
     path('logout/', rest_views.APILogoutView.as_view(), name='api_logout'),
     path('session/', rest_views.get_session_info, name='api_session_info'),
+    # ユーザー設定ページ用のAPIエンドポイントを追加
+    path('settings/', general_views.UserSettingsView.as_view(), name='api_user_settings'),
     # Manually define the ViewSet URLs to avoid the extra 'users/' prefix from the router
     path('', rest_views.UserViewSet.as_view({
         'get': 'list',
