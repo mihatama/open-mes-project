@@ -52,13 +52,13 @@ const getFormFields = (type) => {
             { name: 'code', label: 'コード' },
             { name: 'name', label: '品番名' },
             { name: 'item_type', label: '品目タイプ', type: 'select', options: [
-                { value: 'material', label: '材料' }, { value: 'work_in_progress', label: '仕掛品' }, { value: 'product', label: '製品' }
+                { value: 'product', label: 'Product' }, { value: 'material', label: 'Material' }
             ]},
             { name: 'unit', label: '単位' },
             { name: 'default_warehouse', label: 'デフォルト倉庫' },
             { name: 'default_location', label: 'デフォルト棚番' },
             { name: 'provision_type', label: '支給種別', type: 'select', options: [
-                { value: 'supplied', label: '有償支給' }, { value: 'free', label: '無償支給' }, { value: 'na', label: '該当なし' }
+                { value: 'paid', label: '有償支給' }, { value: 'free', label: '無償支給' }, { value: 'none', label: '支給なし' }
             ]},
             { name: 'description', label: '説明' }
         ],
@@ -109,8 +109,8 @@ const DATA_CONFIG = {
     'warehouse': { name: '倉庫マスター', listUrl: '/api/master/warehouse/list/ajax/', createUrl: '/api/master/warehouse/create/ajax/', detailUrl: (id) => `/api/master/warehouse/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/warehouse/${id}/delete/ajax/` },
     // Assuming other apps follow a similar URL pattern (kebab-case)
     'inventory-purchase-entry': { name: '入庫予定', listUrl: '/api/inventory/purchase-order/list/ajax/', createUrl: '/api/inventory/purchase-order/create/ajax/', detailUrl: (id) => `/api/inventory/purchase-order/${id}/detail/ajax/`, deleteUrl: (id) => `/api/inventory/purchase-order/${id}/delete/ajax/` },
-    'production-plan-entry': { name: '生産計画', listUrl: '/api/production/production-plan/list/ajax/', createUrl: '/api/production/production-plan/create/ajax/', detailUrl: (id) => `/api/production/ajax/plan/${id}/detail/`, deleteUrl: (id) => `/api/production/ajax/plan/${id}/delete/` },
-    'parts-used-entry': { name: '使用部品', listUrl: '/api/production/parts-used/list/ajax/', createUrl: '/api/production/parts-used/create/ajax/', detailUrl: (id) => `/api/production/ajax/parts-used/${id}/detail/`, deleteUrl: (id) => `/api/production/ajax/parts-used/${id}/delete/` },
+    'production-plan-entry': { name: '生産計画', listUrl: '/api/production/production-plan/list/ajax/', createUrl: '/api/production/production-plan/create/ajax/', detailUrl: (id) => `/api/production/production-plan/${id}/detail/ajax/`, deleteUrl: (id) => `/api/production/production-plan/${id}/delete/ajax/` },
+    'parts-used-entry': { name: '使用部品', listUrl: '/api/production/parts-used/list/ajax/', createUrl: '/api/production/parts-used/create/ajax/', detailUrl: (id) => `/api/production/parts-used/${id}/detail/ajax/`, deleteUrl: (id) => `/api/production/parts-used/${id}/delete/ajax/` },
 };
 
 const MASTER_CARDS = ['item', 'supplier', 'warehouse'];
@@ -129,7 +129,7 @@ const CSV_DATA_TYPES = [
         label: "業務データ",
         options: [
             { value: "purchase_order", label: "入庫予定", templateUrl: "/api/inventory/purchase-order/csv-template/", uploadUrl: "/api/inventory/purchase-order/import-csv/" },
-            { value: "production_plan", label: "生産計画", templateUrl: "/api/production/production-plan/csv-template/", uploadUrl: "/api/production/production-plan/import-csv/" },
+            { value: "production_plan", label: "生産計画", templateUrl: "/api/production/plan/csv-template/", uploadUrl: "/api/production/plan/import-csv/" },
             { value: "parts_used", label: "使用部品", templateUrl: "/api/production/parts-used/csv-template/", uploadUrl: "/api/production/parts-used/import-csv/" },
         ]
     }
@@ -418,7 +418,12 @@ const DataImport = () => {
                     {listData.rowKeys.map(key => <td key={key}>{String(row[key] ?? '')}</td>)}
                     <td>
                       <Button variant="warning" size="sm" className="me-1" onClick={() => { setShowListModal(false); handleShowRegisterModal(modalConfig.type, row[listData.idKey]); }}>修正</Button>
-                      <Button variant="danger" size="sm" onClick={() => { const {type, name} = modalConfig; setItemToDelete({ ...row, type, name }); setShowDeleteModal(true); }}>削除</Button>
+                      <Button variant="danger" size="sm" onClick={() => {
+                        const {type} = modalConfig;
+                        const displayName = row.name || row.order_number || row.plan_name || `ID: ${row[listData.idKey]}`;
+                        setItemToDelete({ id: row[listData.idKey], type, displayName });
+                        setShowDeleteModal(true);
+                      }}>削除</Button>
                     </td>
                   </tr>
                 ))}
@@ -431,7 +436,7 @@ const DataImport = () => {
 
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
         <Modal.Header closeButton><Modal.Title>削除確認</Modal.Title></Modal.Header>
-        <Modal.Body>本当に「<strong>{itemToDelete?.name} (ID: {itemToDelete?.id})</strong>」を削除しますか？この操作は元に戻せません。</Modal.Body>
+        <Modal.Body>本当に「<strong>{itemToDelete?.displayName}</strong>」を削除しますか？この操作は元に戻せません。</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>キャンセル</Button>
           <Button variant="danger" onClick={handleDeleteConfirm}>削除実行</Button>
