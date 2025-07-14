@@ -119,18 +119,18 @@ docker compose exec -it open_mes python3 manage.py makemigrations master
 docker compose exec -it open_mes python3 manage.py makemigrations production
 docker compose exec -it open_mes python3 manage.py makemigrations quality
 docker compose exec -it open_mes python3 manage.py makemigrations users
-docker compose exec -it open_mes python3 manage.py migrate
+docker compose exec -it backend python3 manage.py migrate
 ```
 ## 管理者を登録
 ```
-docker compose exec -it open_mes python3 manage.py createsuperuser
+docker compose exec -it backend python3 manage.py createsuperuser
 ```
 
 ## .envファイルのサンプル
 
 下記コマンドでセキュリティキーを再発行する
 ```
-docker compose exec -it open_mes python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+docker compose exec -it backend python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 .env
 ```
@@ -141,7 +141,7 @@ DEBUG=True
 ALLOWED_HOSTS=*
 CSRF_TRUSTED_ORIGINS=*
 
-DATABASE_URL=postgres://django:django@postgres:5432/open_mes
+DATABASE_URL=postgres://django:django@db:5432/open_mes
 
 
 ```
