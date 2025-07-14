@@ -15,6 +15,18 @@ export default defineConfig({
         target: 'http://backend:8000', // Dockerコンテナ名で指定
         changeOrigin: true,
       },
+      '/master': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      },
+      '/production': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      },
+      '/inventory_api': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      },
     }
   }
 })
