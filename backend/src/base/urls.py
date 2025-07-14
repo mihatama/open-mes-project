@@ -58,6 +58,8 @@ urlpatterns = [
     path('users/api-register/', rest.register_user, name='users_api_register'),
     path('api/users/', include('users.api_urls', namespace='users_api')), # API用のusers URLをインクルード
     # Production API paths
+    path('api/master/', include('master.api_urls', namespace='master_api')),
+    # Production API paths
     path('api/production/', include('production.api_urls', namespace='production_api')),
     # Inventory API paths
     path('api/inventory/', include('inventory.urls', namespace='inventory_api')),

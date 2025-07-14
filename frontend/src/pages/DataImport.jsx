@@ -17,13 +17,28 @@ const GenericForm = ({ fields, formData, setFormData }) => (
         {fields.map(field => (
             <Form.Group className="mb-3" controlId={field.name} key={field.name}>
                 <Form.Label>{field.label}</Form.Label>
-                <Form.Control
-                    type={field.type || 'text'}
-                    placeholder={`${field.label}を入力`}
-                    name={field.name}
-                    value={formData[field.name] || ''}
-                    onChange={e => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
-                />
+                {field.type === 'select' ? (
+                    <Form.Select
+                        name={field.name}
+                        value={formData[field.name] || ''}
+                        onChange={e => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                    >
+                        <option value="">選択してください</option>
+                        {field.options.map(option => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </Form.Select>
+                ) : (
+                    <Form.Control
+                        type={field.type || 'text'}
+                        placeholder={`${field.label}を入力`}
+                        name={field.name}
+                        value={formData[field.name] || ''}
+                        onChange={e => setFormData(prev => ({ ...prev, [field.name]: e.target.value }))}
+                    />
+                )}
             </Form.Group>
         ))}
     </Form>
@@ -33,7 +48,20 @@ const getFormFields = (type) => {
     // This function would return form field configurations based on the type.
     // For brevity, we'll use a simplified version.
     const allFields = {
-        item: [ { name: 'code', label: 'コード' }, { name: 'name', label: '品番名' }, { name: 'item_type', label: '品目タイプ' }, { name: 'unit', label: '単位' }, { name: 'default_warehouse', label: 'デフォルト倉庫' }, { name: 'default_location', label: 'デフォルト棚番' }, { name: 'provision_type', label: '支給種別' }, { name: 'description', label: '説明' } ],
+        item: [
+            { name: 'code', label: 'コード' },
+            { name: 'name', label: '品番名' },
+            { name: 'item_type', label: '品目タイプ', type: 'select', options: [
+                { value: 'material', label: '材料' }, { value: 'work_in_progress', label: '仕掛品' }, { value: 'product', label: '製品' }
+            ]},
+            { name: 'unit', label: '単位' },
+            { name: 'default_warehouse', label: 'デフォルト倉庫' },
+            { name: 'default_location', label: 'デフォルト棚番' },
+            { name: 'provision_type', label: '支給種別', type: 'select', options: [
+                { value: 'supplied', label: '有償支給' }, { value: 'free', label: '無償支給' }, { value: 'na', label: '該当なし' }
+            ]},
+            { name: 'description', label: '説明' }
+        ],
         supplier: [ { name: 'supplier_number', label: 'サプライヤー番号' }, { name: 'name', label: 'サプライヤー名' }, { name: 'contact_person', label: '担当者名' }, { name: 'phone', label: '電話番号' }, { name: 'email', label: 'メールアドレス', type: 'email' }, { name: 'address', label: '住所' } ],
         warehouse: [ { name: 'warehouse_number', label: '倉庫番号' }, { name: 'name', label: '倉庫名' }, { name: 'location', label: '所在地' } ],
         'inventory-purchase-entry': [ { name: 'order_number', label: '発注番号' }, { name: 'shipment_number', label: '便番号' }, { name: 'supplier', label: '仕入れ先' }, { name: 'part_number', label: '品番' }, { name: 'product_name', label: '品名' }, { name: 'quantity', label: '数量', type: 'number' }, { name: 'expected_arrival', label: '入荷予定日', type: 'date' }, { name: 'status', label: 'ステータス' } ],
@@ -76,12 +104,13 @@ const getTableConfig = (type) => {
 };
 
 const DATA_CONFIG = {
-    'item': { name: '品番マスター', listUrl: '/master/item_list_ajax/', createUrl: '/master/item_create_ajax/', detailUrl: (id) => `/master/item/${id}/detail/ajax/`, deleteUrl: (id) => `/master/item/${id}/delete/ajax/` },
-    'supplier': { name: 'サプライヤーマスター', listUrl: '/master/supplier_list_ajax/', createUrl: '/master/supplier_create_ajax/', detailUrl: (id) => `/master/supplier/${id}/detail/ajax/`, deleteUrl: (id) => `/master/supplier/${id}/delete/ajax/` },
-    'warehouse': { name: '倉庫マスター', listUrl: '/master/warehouse_list_ajax/', createUrl: '/master/warehouse_create_ajax/', detailUrl: (id) => `/master/warehouse/${id}/detail/ajax/`, deleteUrl: (id) => `/master/warehouse/${id}/delete/ajax/` },
-    'inventory-purchase-entry': { name: '入庫予定', listUrl: '/api/inventory/purchase_order_list_ajax/', createUrl: '/api/inventory/purchase_order_create_ajax/', detailUrl: (id) => `/api/inventory/purchase-order/${id}/detail/ajax/`, deleteUrl: (id) => `/api/inventory/purchase-order/${id}/delete/ajax/` },
-    'production-plan-entry': { name: '生産計画', listUrl: '/production/production_plan_list_ajax/', createUrl: '/production/production_plan_create_ajax/', detailUrl: (id) => `/production/ajax/plan/${id}/detail/`, deleteUrl: (id) => `/production/ajax/plan/${id}/delete/` },
-    'parts-used-entry': { name: '使用部品', listUrl: '/production/parts_used_list_ajax/', createUrl: '/production/parts_used_create_ajax/', detailUrl: (id) => `/production/ajax/parts-used/${id}/detail/`, deleteUrl: (id) => `/production/ajax/parts-used/${id}/delete/` },
+    'item': { name: '品番マスター', listUrl: '/api/master/item/list/ajax/', createUrl: '/api/master/item/create/ajax/', detailUrl: (id) => `/api/master/item/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/item/${id}/delete/ajax/` },
+    'supplier': { name: 'サプライヤーマスター', listUrl: '/api/master/supplier/list/ajax/', createUrl: '/api/master/supplier/create/ajax/', detailUrl: (id) => `/api/master/supplier/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/supplier/${id}/delete/ajax/` },
+    'warehouse': { name: '倉庫マスター', listUrl: '/api/master/warehouse/list/ajax/', createUrl: '/api/master/warehouse/create/ajax/', detailUrl: (id) => `/api/master/warehouse/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/warehouse/${id}/delete/ajax/` },
+    // Assuming other apps follow a similar URL pattern (kebab-case)
+    'inventory-purchase-entry': { name: '入庫予定', listUrl: '/api/inventory/purchase-order/list/ajax/', createUrl: '/api/inventory/purchase-order/create/ajax/', detailUrl: (id) => `/api/inventory/purchase-order/${id}/detail/ajax/`, deleteUrl: (id) => `/api/inventory/purchase-order/${id}/delete/ajax/` },
+    'production-plan-entry': { name: '生産計画', listUrl: '/api/production/production-plan/list/ajax/', createUrl: '/api/production/production-plan/create/ajax/', detailUrl: (id) => `/api/production/ajax/plan/${id}/detail/`, deleteUrl: (id) => `/api/production/ajax/plan/${id}/delete/` },
+    'parts-used-entry': { name: '使用部品', listUrl: '/api/production/parts-used/list/ajax/', createUrl: '/api/production/parts-used/create/ajax/', detailUrl: (id) => `/api/production/ajax/parts-used/${id}/detail/`, deleteUrl: (id) => `/api/production/ajax/parts-used/${id}/delete/` },
 };
 
 const MASTER_CARDS = ['item', 'supplier', 'warehouse'];
@@ -91,17 +120,17 @@ const CSV_DATA_TYPES = [
     {
         label: "マスターデータ",
         options: [
-            { value: "item", label: "品番マスター", templateUrl: "/master/item_csv_template/", uploadUrl: "/master/item_import_csv/" },
-            { value: "supplier", label: "サプライヤーマスター", templateUrl: "/master/supplier_csv_template/", uploadUrl: "/master/supplier_import_csv/" },
-            { value: "warehouse", label: "倉庫マスター", templateUrl: "/master/warehouse_csv_template/", uploadUrl: "/master/warehouse_import_csv/" },
+            { value: "item", label: "品番マスター", templateUrl: "/api/master/item/csv-template/", uploadUrl: "/api/master/item/import-csv/" },
+            { value: "supplier", label: "サプライヤーマスター", templateUrl: "/api/master/supplier/csv-template/", uploadUrl: "/api/master/supplier/import-csv/" },
+            { value: "warehouse", label: "倉庫マスター", templateUrl: "/api/master/warehouse/csv-template/", uploadUrl: "/api/master/warehouse/import-csv/" },
         ]
     },
     {
         label: "業務データ",
         options: [
-            { value: "purchase_order", label: "入庫予定", templateUrl: "/inventory_api/purchase_order_csv_template/", uploadUrl: "/inventory_api/purchase_order_import_csv/" },
-            { value: "production_plan", label: "生産計画", templateUrl: "/production/production_plan_csv_template/", uploadUrl: "/production/production_plan_import_csv/" },
-            { value: "parts_used", label: "使用部品", templateUrl: "/production/parts_used_csv_template/", uploadUrl: "/production/parts_used_import_csv/" },
+            { value: "purchase_order", label: "入庫予定", templateUrl: "/api/inventory/purchase-order/csv-template/", uploadUrl: "/api/inventory/purchase-order/import-csv/" },
+            { value: "production_plan", label: "生産計画", templateUrl: "/api/production/production-plan/csv-template/", uploadUrl: "/api/production/production-plan/import-csv/" },
+            { value: "parts_used", label: "使用部品", templateUrl: "/api/production/parts-used/csv-template/", uploadUrl: "/api/production/parts-used/import-csv/" },
         ]
     }
 ];
@@ -130,17 +159,45 @@ const DataImport = () => {
 
     const handleShowRegisterModal = useCallback(async (type, recordId = null) => {
         const config = DATA_CONFIG[type];
+        const fields = getFormFields(type); // フィールド定義を取得
         setModalConfig({ type, name: config.name, recordId });
         setFormData({});
         if (recordId) {
             setIsLoading(true);
+            setError(null); // エラーをリセット
             try {
-                const response = await fetch(config.detailUrl(recordId));
+                const response = await fetch(config.detailUrl(recordId), { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch record details.');
                 const result = await response.json();
-                if (result.status === 'success') setFormData(result.data);
-                else throw new Error(result.message || 'Could not load data.');
-            } catch (e) { setError(e.message); } finally { setIsLoading(false); }
+                if (result.status === 'success') {
+                    const fetchedData = result.data;
+                    const processedData = { ...fetchedData };
+
+                    // プルダウンのフィールドについて、表示名からDBの値に変換する
+                    fields.forEach(field => {
+                        if (field.type === 'select' && fetchedData[field.name]) {
+                            const apiValue = fetchedData[field.name];
+                            const optionByLabel = field.options.find(opt => opt.label === apiValue);
+                            const optionByValue = field.options.find(opt => opt.value === apiValue);
+
+                            if (optionByLabel && !optionByValue) {
+                                // APIからの値が表示名と一致し、DB値とは異なる場合、DB値に変換
+                                processedData[field.name] = optionByLabel.value;
+                            } else if (!optionByLabel && !optionByValue) {
+                                // どの選択肢とも一致しない場合は値をクリアして警告を回避
+                                processedData[field.name] = '';
+                            }
+                        }
+                    });
+                    setFormData(processedData);
+                } else {
+                    throw new Error(result.message || 'Could not load data.');
+                }
+            } catch (e) {
+                setError(e.message);
+            } finally {
+                setIsLoading(false);
+            }
         }
         setShowRegisterModal(true);
     }, []);
@@ -156,7 +213,7 @@ const DataImport = () => {
             setIsLoading(true);
             setError(null);
             try {
-                const response = await fetch(DATA_CONFIG[modalConfig.type].listUrl);
+                const response = await fetch(DATA_CONFIG[modalConfig.type].listUrl, { credentials: 'include' });
                 if (!response.ok) throw new Error('Network response was not ok');
                 const result = await response.json();
                 setListData({ ...getTableConfig(modalConfig.type), rows: result.data });
@@ -173,7 +230,7 @@ const DataImport = () => {
         if (recordId) submitData.append('id', recordId);
 
         try {
-            const response = await fetch(config.createUrl, { method: 'POST', body: submitData, headers: { 'X-CSRFToken': getCsrfToken() } });
+            const response = await fetch(config.createUrl, { method: 'POST', body: submitData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
             const result = await response.json();
             if (result.status === 'success') {
                 alert(result.message || '保存しました。');
@@ -190,7 +247,7 @@ const DataImport = () => {
         if (!itemToDelete) return;
         const { type, id } = itemToDelete;
         try {
-            const response = await fetch(DATA_CONFIG[type].deleteUrl(id), { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' } });
+            const response = await fetch(DATA_CONFIG[type].deleteUrl(id), { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' }, credentials: 'include' });
             const result = await response.json();
             if (result.status === 'success') {
                 alert(result.message || '削除しました。');
@@ -213,6 +270,40 @@ const DataImport = () => {
         setCsvTemplateUrl(selectedOption?.templateUrl || '');
     };
 
+    const handleTemplateDownload = async (e) => {
+        e.preventDefault();
+        if (!csvTemplateUrl) return;
+
+        try {
+            // fetchを使用してプロキシ経由でリクエストを送信します
+            const response = await fetch(csvTemplateUrl, { credentials: 'include' });
+            if (!response.ok) {
+                throw new Error(`サーバーエラー: ${response.status} ${response.statusText}`);
+            }
+
+            // ヘッダーからファイル名を取得します
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = 'template.csv'; // デフォルトのファイル名
+            if (disposition && disposition.includes('attachment')) {
+                const filenameMatch = /filename="([^"]+)"/.exec(disposition);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = decodeURIComponent(filenameMatch[1]);
+                }
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = filename;
+            link.click();
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+            console.error('テンプレートのダウンロードに失敗しました:', err);
+            alert(`テンプレートのダウンロードに失敗しました: ${err.message}`);
+        }
+    };
+
     const handleCsvUpload = async (e) => {
         e.preventDefault();
         if (!csvFile || !csvUploadUrl) return;
@@ -221,7 +312,7 @@ const DataImport = () => {
         uploadData.append('data_type', csvDataType);
         setIsLoading(true);
         try {
-            const response = await fetch(csvUploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() } });
+            const response = await fetch(csvUploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
             const result = await response.json();
             setCsvResult({ message: result.message, isError: result.status !== 'success' });
         } catch (err) {
@@ -296,7 +387,7 @@ const DataImport = () => {
               </Col>
             </Row>
             <div className="mt-3">
-              {csvTemplateUrl && <a href={csvTemplateUrl} className="btn btn-link btn-sm p-0" target="_blank" rel="noopener noreferrer" download>テンプレートCSVをダウンロード</a>}
+              {csvTemplateUrl && <a href={csvTemplateUrl} onClick={handleTemplateDownload} className="btn btn-link btn-sm p-0">テンプレートCSVをダウンロード</a>}
             </div>
           </Form>
         </Card.Body>

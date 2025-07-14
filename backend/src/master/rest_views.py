@@ -319,8 +319,15 @@ class BaseCSVImportAPIView(APIView):
 class ItemCSVTemplateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, *args, **kwargs):
-        csv_content_str = "品番コード,品番名,品目タイプ,単位,説明,デフォルト入庫倉庫,デフォルト入庫棚番,支給種別\nITEM-001,製品X,product,個,これはサンプルです,中央倉庫,A-01-01,paid"
-        csv_content_bytes = csv_content_str.encode('utf-8-sig')
+        headers = ["品番コード", "品番名", "品目タイプ", "単位", "説明", "デフォルト入庫倉庫", "デフォルト入庫棚番", "支給種別"]
+        example_row = ["ITEM-001", "製品X", "product", "個", "これはサンプルです", "中央倉庫", "A-01-01", "paid"]
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        writer.writerow(example_row)
+
+        csv_content_bytes = output.getvalue().encode('utf-8-sig')
         response = HttpResponse(csv_content_bytes, content_type='text/csv; charset=utf-8-sig')
         response['Content-Disposition'] = 'attachment; filename="item_template.csv"'
         return response
@@ -372,8 +379,15 @@ class ItemImportCSVAPIView(BaseCSVImportAPIView):
 class SupplierCSVTemplateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, *args, **kwargs):
-        csv_content_str = "サプライヤー番号,サプライヤー名,担当者名,電話番号,メールアドレス,住所\nSUP-001,株式会社サンプル,山田太郎,03-xxxx-xxxx,yamada@example.com,東京都..."
-        csv_content_bytes = csv_content_str.encode('utf-8-sig')
+        headers = ["サプライヤー番号", "サプライヤー名", "担当者名", "電話番号", "メールアドレス", "住所"]
+        example_row = ["SUP-001", "株式会社サンプル", "山田太郎", "03-xxxx-xxxx", "yamada@example.com", "東京都..."]
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        writer.writerow(example_row)
+
+        csv_content_bytes = output.getvalue().encode('utf-8-sig')
         response = HttpResponse(csv_content_bytes, content_type='text/csv; charset=utf-8-sig')
         response['Content-Disposition'] = 'attachment; filename="supplier_template.csv"'
         return response
@@ -418,8 +432,15 @@ class SupplierImportCSVAPIView(BaseCSVImportAPIView):
 class WarehouseCSVTemplateAPIView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request, *args, **kwargs):
-        csv_content_str = "倉庫番号,倉庫名,所在地\nWH-001,本社倉庫,東京都..."
-        csv_content_bytes = csv_content_str.encode('utf-8-sig')
+        headers = ["倉庫番号", "倉庫名", "所在地"]
+        example_row = ["WH-001", "本社倉庫", "東京都..."]
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(headers)
+        writer.writerow(example_row)
+
+        csv_content_bytes = output.getvalue().encode('utf-8-sig')
         response = HttpResponse(csv_content_bytes, content_type='text/csv; charset=utf-8-sig')
         response['Content-Disposition'] = 'attachment; filename="warehouse_template.csv"'
         return response

@@ -7,14 +7,14 @@ app_name = 'production'
 
 urlpatterns = [
     # ... other production urls ...
-    path('ajax/plan/create/', views.ProductionPlanCreateAjaxView.as_view(), name='production_plan_create_ajax'),
-    path('ajax/parts-used/create/', views.PartsUsedCreateAjaxView.as_view(), name='parts_used_create_ajax'),
-    path('ajax/plan/list/', views.ProductionPlanListAjaxView.as_view(), name='production_plan_list_ajax'),
-    path('ajax/plan/<uuid:pk>/detail/', views.ProductionPlanDetailAjaxView.as_view(), name='production_plan_detail_ajax'),
-    path('ajax/plan/<uuid:pk>/delete/', views.ProductionPlanDeleteAjaxView.as_view(), name='production_plan_delete_ajax'),
-    path('ajax/parts-used/list/', views.PartsUsedListAjaxView.as_view(), name='parts_used_list_ajax'),
-    path('ajax/parts-used/<uuid:pk>/detail/', views.PartsUsedDetailAjaxView.as_view(), name='parts_used_detail_ajax'),
-    path('ajax/parts-used/<uuid:pk>/delete/', views.PartsUsedDeleteAjaxView.as_view(), name='parts_used_delete_ajax'),
+    path('production-plan/create/ajax/', views.ProductionPlanCreateAjaxView.as_view(), name='production_plan_create_ajax'),
+    path('parts-used/create/ajax/', views.PartsUsedCreateAjaxView.as_view(), name='parts_used_create_ajax'),
+    path('production-plan/list/ajax/', views.ProductionPlanListAjaxView.as_view(), name='production_plan_list_ajax'),
+    path('production-plan/<uuid:pk>/detail/ajax/', views.ProductionPlanDetailAjaxView.as_view(), name='production_plan_detail_ajax'),
+    path('production-plan/<uuid:pk>/delete/ajax/', views.ProductionPlanDeleteAjaxView.as_view(), name='production_plan_delete_ajax'),
+    path('parts-used/list/ajax/', views.PartsUsedListAjaxView.as_view(), name='parts_used_list_ajax'),
+    path('parts-used/<uuid:pk>/detail/ajax/', views.PartsUsedDetailAjaxView.as_view(), name='parts_used_detail_ajax'),
+    path('parts-used/<uuid:pk>/delete/ajax/', views.PartsUsedDeleteAjaxView.as_view(), name='parts_used_delete_ajax'),
 
 
     # Production Menu URLs
