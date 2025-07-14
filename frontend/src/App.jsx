@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { getCookie } from './utils/cookies.js';
 import Header from './components/Header.jsx';
@@ -26,6 +26,26 @@ import MachineMasterCreation from './pages/MachineMasterCreation.jsx';
 import DataImport from './pages/DataImport.jsx';
 import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
+import MobileTopPage from './pages/MobileTopPage.jsx';
+
+// モバイルデバイスからのアクセス時にリダイレクトを行うためのコンポーネント
+const MobileRedirector = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobilePage = location.pathname === '/mobile';
+    const isLoginPage = location.pathname === '/login';
+
+    // モバイルデバイスで、かつモバイルページでもログインページでもない場合にリダイレクト
+    if (isMobile && !isMobilePage && !isLoginPage) {
+      navigate('/mobile', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
+  return null; // このコンポーネントはUIを描画しません
+};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -106,6 +126,9 @@ function App() {
 
   return (
     <Router>
+      {/* 認証済みの場合、モバイルリダイレクト機能を有効化 */}
+      {isAuthenticated && <MobileRedirector />}
+
       {isAuthenticated && (
         <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       )}
@@ -125,6 +148,7 @@ function App() {
 
           {/* Protected Routes */}
           <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} isAuthenticated={isAuthenticated} onLogout={handleLogout} /></ProtectedRoute>} />
+          <Route path="/mobile" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileTopPage /></ProtectedRoute>} />
           {/* Inventory Management */}
           <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
           <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />

@@ -353,6 +353,11 @@ class ItemImportCSVAPIView(BaseCSVImportAPIView):
         if not code: errors.append("品番コードは必須です。")
         if not name: errors.append("品番名は必須です。")
         if not item_type_csv: errors.append("品目タイプは必須です。")
+
+        if code and name:
+            # 別の品番コードで同じ品番名が既に存在するかチェック
+            if Item.objects.filter(name=name).exclude(code=code).exists():
+                errors.append(f"品番名 '{name}' は他の品番で既に使用されています。")
         
         valid_item_types = [choice[0] for choice in Item.ITEM_TYPE_CHOICES]
         if item_type_csv and item_type_csv not in valid_item_types:
@@ -410,6 +415,11 @@ class SupplierImportCSVAPIView(BaseCSVImportAPIView):
 
         if not supplier_number: errors.append("サプライヤー番号は必須です。")
         if not name: errors.append("サプライヤー名は必須です。")
+
+        if supplier_number and name:
+            # 別のサプライヤー番号で同じサプライヤー名が既に存在するかチェック
+            if Supplier.objects.filter(name=name).exclude(supplier_number=supplier_number).exists():
+                errors.append(f"サプライヤー名 '{name}' は他のサプライヤーで既に使用されています。")
         
         if email:
             try:

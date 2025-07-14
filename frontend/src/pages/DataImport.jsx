@@ -52,7 +52,7 @@ const getFormFields = (type) => {
             { name: 'code', label: 'コード' },
             { name: 'name', label: '品番名' },
             { name: 'item_type', label: '品目タイプ', type: 'select', options: [
-                { value: 'product', label: 'Product' }, { value: 'material', label: 'Material' }
+                { value: 'product', label: '製品' }, { value: 'material', label: '材料' }
             ]},
             { name: 'unit', label: '単位' },
             { name: 'default_warehouse', label: 'デフォルト倉庫' },
@@ -64,8 +64,26 @@ const getFormFields = (type) => {
         ],
         supplier: [ { name: 'supplier_number', label: 'サプライヤー番号' }, { name: 'name', label: 'サプライヤー名' }, { name: 'contact_person', label: '担当者名' }, { name: 'phone', label: '電話番号' }, { name: 'email', label: 'メールアドレス', type: 'email' }, { name: 'address', label: '住所' } ],
         warehouse: [ { name: 'warehouse_number', label: '倉庫番号' }, { name: 'name', label: '倉庫名' }, { name: 'location', label: '所在地' } ],
-        'inventory-purchase-entry': [ { name: 'order_number', label: '発注番号' }, { name: 'shipment_number', label: '便番号' }, { name: 'supplier', label: '仕入れ先' }, { name: 'part_number', label: '品番' }, { name: 'product_name', label: '品名' }, { name: 'quantity', label: '数量', type: 'number' }, { name: 'expected_arrival', label: '入荷予定日', type: 'date' }, { name: 'status', label: 'ステータス' } ],
-        'production-plan-entry': [ { name: 'plan_name', label: '計画名' }, { name: 'product_code', label: '製品コード' }, { name: 'product_name', label: '品名' }, { name: 'planned_quantity', label: '計画数量', type: 'number' }, { name: 'planned_start_datetime', label: '計画開始日時', type: 'datetime-local' }, { name: 'status', label: 'ステータス' } ],
+        'inventory-purchase-entry': [
+            { name: 'order_number', label: '発注番号' },
+            { name: 'shipment_number', label: '便番号' },
+            { name: 'supplier', label: '仕入れ先' },
+            { name: 'item', label: '発注対象' },
+            { name: 'part_number', label: '品番' },
+            { name: 'product_name', label: '品名' },
+            { name: 'quantity', label: '数量', type: 'number' },
+            { name: 'expected_arrival', label: '入荷予定日', type: 'date' }
+            // 'status' is read-only and should not be in the form
+        ],
+        'production-plan-entry': [
+            { name: 'plan_name', label: '計画名' },
+            { name: 'product_code', label: '製品コード' },
+            { name: 'production_plan', label: '参照生産計画' },
+            { name: 'planned_quantity', label: '計画数量', type: 'number' },
+            { name: 'planned_start_datetime', label: '計画開始日時', type: 'datetime-local' },
+            { name: 'planned_end_datetime', label: '計画終了日時', type: 'datetime-local' },
+            { name: 'remarks', label: '備考' }
+        ],
         'parts-used-entry': [ { name: 'production_plan', label: '生産計画' }, { name: 'part_code', label: '部品コード' }, { name: 'warehouse', label: '倉庫' }, { name: 'quantity_used', label: '使用数量', type: 'number' }, { name: 'used_datetime', label: '使用日時', type: 'datetime-local' } ],
     };
     return allFields[type] || [];
@@ -87,12 +105,12 @@ const getTableConfig = (type) => {
             rowKeys = ['warehouse_number', 'name', 'location'];
             break;
         case 'inventory-purchase-entry':
-            headers = ['発注番号', '便番号', '仕入れ先', '品番', '品名', '数量', '入荷予定日', 'ステータス', '操作'];
-            rowKeys = ['order_number', 'shipment_number', 'supplier', 'part_number', 'product_name', 'quantity', 'expected_arrival', 'status'];
+            headers = ['発注番号', '便番号', '仕入れ先', '発注対象', '品番', '品名', '数量', '入荷予定日', 'ステータス', '操作'];
+            rowKeys = ['order_number', 'shipment_number', 'supplier', 'item', 'part_number', 'product_name', 'quantity', 'expected_arrival', 'status'];
             break;
         case 'production-plan-entry':
-            headers = ['計画名', '製品コード', '品名', '計画数量', '計画開始日時', 'ステータス', '操作'];
-            rowKeys = ['plan_name', 'product_code', 'product_name', 'planned_quantity', 'planned_start_datetime', 'status'];
+            headers = ['計画名', '製品コード', '計画数量', '計画開始日時', '計画終了日時', 'ステータス', '操作'];
+            rowKeys = ['plan_name', 'product_code', 'planned_quantity', 'planned_start_datetime', 'planned_end_datetime', 'status'];
             break;
         case 'parts-used-entry':
             headers = ['生産計画', '部品コード', '倉庫', '使用数量', '使用日時', '操作'];
@@ -149,7 +167,7 @@ const DataImport = () => {
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({});
     const [itemToDelete, setItemToDelete] = useState(null);
-    const [csvResult, setCsvResult] = useState({ message: '', isError: false });
+    const [csvResult, setCsvResult] = useState({ message: '', isError: false, errors: [] });
 
     // State for CSV Upload
     const [csvDataType, setCsvDataType] = useState('');
@@ -220,7 +238,7 @@ const DataImport = () => {
             } catch (e) { setError(e.message); } finally { setIsLoading(false); }
         };
         fetchListData();
-    }, [showListModal, modalConfig.type]);
+    }, [showListModal, modalConfig]);
 
     const handleFormSubmit = async () => {
         const { type, recordId } = modalConfig;
@@ -314,9 +332,9 @@ const DataImport = () => {
         try {
             const response = await fetch(csvUploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
             const result = await response.json();
-            setCsvResult({ message: result.message, isError: result.status !== 'success' });
+            setCsvResult({ message: result.message, isError: result.status !== 'success' && result.status !== 'partial_success', errors: result.errors || [] });
         } catch (err) {
-            setCsvResult({ message: `アップロード中にエラーが発生しました: ${err.message}`, isError: true });
+            setCsvResult({ message: `アップロード中にエラーが発生しました: ${err.message}`, isError: true, errors: [] });
         } finally {
             setIsLoading(false);
             setShowCsvResultModal(true);
@@ -445,7 +463,17 @@ const DataImport = () => {
 
       <Modal show={showCsvResultModal} onHide={() => setShowCsvResultModal(false)} centered>
         <Modal.Header closeButton><Modal.Title>CSVアップロード結果</Modal.Title></Modal.Header>
-        <Modal.Body><Alert variant={csvResult.isError ? 'danger' : 'success'}>{csvResult.message}</Alert></Modal.Body>
+        <Modal.Body>
+          <Alert variant={csvResult.isError ? 'danger' : 'success'}>{csvResult.message}</Alert>
+          {csvResult.errors && csvResult.errors.length > 0 && (
+            <div className="mt-3" style={{ maxHeight: '200px', overflowY: 'auto', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
+              <strong>エラー詳細:</strong>
+              <ul className="mb-0 ps-3">
+                {csvResult.errors.map((error, index) => <li key={index}><small>{error}</small></li>)}
+              </ul>
+            </div>
+          )}
+        </Modal.Body>
         <Modal.Footer><Button variant="primary" onClick={() => setShowCsvResultModal(false)}>閉じる</Button></Modal.Footer>
       </Modal>
     </Container>
