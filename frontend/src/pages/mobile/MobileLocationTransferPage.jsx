@@ -53,7 +53,9 @@ const MobileLocationTransferPage = () => {
 
     try {
       const params = new URLSearchParams({ warehouse: warehouse, location: sourceLocation });
-      const response = await fetch(`/api/inventory/by-location/?${params.toString()}`);
+      const response = await fetch(`/api/inventory/by-location/?${params.toString()}`, {
+        credentials: 'include',
+      });
 
       if (!response.ok) {
         const errData = await response.json();
@@ -116,7 +118,8 @@ const MobileLocationTransferPage = () => {
       const response = await fetch("/api/inventory/location-transfer/", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        credentials: 'include',
       });
       const result = await response.json();
 

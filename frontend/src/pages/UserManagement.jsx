@@ -24,7 +24,9 @@ const UserManagement = () => {
         try {
             // NOTE: This assumes a JSON-based API endpoint at /api/users/
             // This needs to be created in the Django backend.
-            const response = await fetch('/api/users/');
+            const response = await fetch('/api/users/', {
+                credentials: 'include',
+            });
             if (!response.ok) {
                 const data = await response.json().catch(() => null);
                 throw new Error(data?.detail || `HTTP error! status: ${response.status}`);
@@ -52,6 +54,7 @@ const UserManagement = () => {
                 const response = await fetch(`/api/users/${userId}/`, {
                     method: 'DELETE',
                     headers: { 'X-CSRFToken': csrfToken },
+                    credentials: 'include',
                 });
 
                 if (response.ok) {

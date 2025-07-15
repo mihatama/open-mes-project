@@ -32,6 +32,7 @@ const LoginPage = ({ onLoginSuccess }) => {
           'X-CSRFToken': csrfToken,
         },
         body: JSON.stringify({ custom_id: customId, password }),
+        credentials: 'include', // クロスオリジンリクエストでクッキーを送信するために必要
       });
 
       if (response.ok) {

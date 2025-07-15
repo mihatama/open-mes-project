@@ -51,7 +51,9 @@ const InventoryInquiry = () => {
     }
 
     try {
-      const response = await fetch(apiUrl);
+      const response = await fetch(apiUrl, {
+        credentials: 'include',
+      });
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
@@ -154,6 +156,7 @@ const InventoryInquiry = () => {
           warehouse: modifyFormData.warehouse.trim(),
           location: modifyFormData.location.trim(),
         }),
+        credentials: 'include',
       });
       const result = await response.json();
       if (result.success) {
@@ -195,6 +198,7 @@ const InventoryInquiry = () => {
           target_warehouse: moveFormData.target_warehouse.trim(),
           target_location: moveFormData.target_location.trim(),
         }),
+        credentials: 'include',
       });
       const result = await response.json();
       if (result.success) {

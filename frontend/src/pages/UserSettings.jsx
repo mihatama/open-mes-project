@@ -46,6 +46,7 @@ const UserSettings = () => {
         headers: {
           'Accept': 'application/json',
         },
+        credentials: 'include',
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'ユーザーデータの読み込みに失敗しました。' }));
@@ -99,6 +100,7 @@ const UserSettings = () => {
           ...profileForm,
           form_type: 'profile',
         }),
+        credentials: 'include',
       });
       const data = await response.json();
       if (!response.ok) {
@@ -130,6 +132,7 @@ const UserSettings = () => {
           ...passwordForm,
           form_type: 'password_change',
         }),
+        credentials: 'include',
       });
       const data = await response.json();
       if (!response.ok) {
@@ -164,6 +167,7 @@ const UserSettings = () => {
           form_type: 'api_token',
           regenerate_token: true,
         }),
+        credentials: 'include',
       });
       const data = await response.json();
       if (!response.ok) {

@@ -63,7 +63,14 @@ function AppContent() {
 
   const checkAuthStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/users/session/');
+      const csrfToken = getCookie('csrftoken');
+      const response = await fetch('/api/users/session/', {
+        headers: {
+          // GETリクエストでもCSRFトークンが必要なためヘッダーに含める
+          'X-CSRFToken': csrfToken,
+        },
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setIsAuthenticated(data.isAuthenticated);
@@ -97,8 +104,10 @@ function AppContent() {
     await fetch('/api/users/logout/', {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken,
       },
+      credentials: 'include',
     });
     // 状態を更新して、UI側でリダイレクトをハンドリングさせる
     setIsAuthenticated(false);

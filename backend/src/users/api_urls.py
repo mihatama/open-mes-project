@@ -10,7 +10,7 @@ urlpatterns = [
     path('login/', rest_views.CustomObtainAuthToken.as_view(), name='api_login'),
     path('logout/', rest_views.APILogoutView.as_view(), name='api_logout'),
     path('session/', rest_views.get_session_info, name='api_session_info'),
-    # ユーザー設定ページ用のAPIエンドポイントを追加
+    # API endpoint for user settings page
     path('settings/', general_views.UserSettingsView.as_view(), name='api_user_settings'),
     # Manually define the ViewSet URLs to avoid the extra 'users/' prefix from the router
     path('', rest_views.UserViewSet.as_view({

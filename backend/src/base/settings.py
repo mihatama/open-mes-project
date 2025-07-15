@@ -53,6 +53,15 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
 
+# Cookie を使用したクロスオリジンリクエストを許可する
+CORS_ALLOW_CREDENTIALS = True
+
+# CSRF Cookie と Session Cookie の SameSite 設定
+# 開発環境でフロントエンド(localhost:5173)とバックエンド(localhost:8000)が異なるオリジンで動作しているため、
+# 'Lax' に設定してクロスサイトリクエストでCookieが送信されるようにします。
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
 # Application definition
 
 INSTALLED_APPS = [

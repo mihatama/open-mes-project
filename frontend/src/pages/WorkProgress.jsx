@@ -90,7 +90,9 @@ const WorkProgress = () => {
         const url = buildApiUrl(pageUrl);
 
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                credentials: 'include',
+            });
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
@@ -229,6 +231,7 @@ const WorkProgress = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                 body: JSON.stringify(payload),
+                credentials: 'include',
             });
             const data = await response.json();
             if (!response.ok) {
