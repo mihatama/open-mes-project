@@ -1,15 +1,3 @@
-// vite.config.js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    watch: {
-      usePolling: true,
-    },
-  },
-});
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
