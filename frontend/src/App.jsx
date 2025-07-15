@@ -26,7 +26,11 @@ import MachineMasterCreation from './pages/MachineMasterCreation.jsx';
 import DataImport from './pages/DataImport.jsx';
 import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
+import MobileLayout from './layouts/MobileLayout.jsx';
 import MobileTopPage from './pages/MobileTopPage.jsx';
+import MobileGoodsReceiptPage from './pages/mobile/MobileGoodsReceiptPage.jsx';
+import MobileGoodsIssuePage from './pages/mobile/MobileGoodsIssuePage.jsx';
+import MobileLocationTransferPage from './pages/mobile/MobileLocationTransferPage.jsx';
 
 // モバイルデバイスからのアクセス時にリダイレクトを行うためのコンポーネント
 const MobileRedirector = () => {
@@ -35,7 +39,7 @@ const MobileRedirector = () => {
 
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isMobilePage = location.pathname === '/mobile';
+    const isMobilePage = location.pathname.startsWith('/mobile');
     const isLoginPage = location.pathname === '/login';
 
     // モバイルデバイスで、かつモバイルページでもログインページでもない場合にリダイレクト
@@ -47,7 +51,10 @@ const MobileRedirector = () => {
   return null; // このコンポーネントはUIを描画しません
 };
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isMobilePath = location.pathname.startsWith('/mobile');
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isStaffOrSuperuser, setIsStaffOrSuperuser] = useState(false);
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -125,14 +132,14 @@ function App() {
   }
 
   return (
-    <Router>
+    <>
       {/* 認証済みの場合、モバイルリダイレクト機能を有効化 */}
       {isAuthenticated && <MobileRedirector />}
 
-      {isAuthenticated && (
+      {isAuthenticated && !isMobilePath && (
         <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
       )}
-      {isAuthenticated && (
+      {isAuthenticated && !isMobilePath && (
         <SideMenu
           isOpen={isMenuOpen}
           isStaffOrSuperuser={isStaffOrSuperuser}
@@ -141,14 +148,13 @@ function App() {
           onLogout={handleLogout}
         />
       )}
-      {isAuthenticated && isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
-      <main className={isAuthenticated ? "main-contents container" : ""}>
+      {isAuthenticated && !isMobilePath && isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
+      <main className={isAuthenticated && !isMobilePath ? "main-contents container" : ""}>
         <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />} />
 
-          {/* Protected Routes */}
+          {/* Desktop Protected Routes */}
           <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} isAuthenticated={isAuthenticated} onLogout={handleLogout} /></ProtectedRoute>} />
-          <Route path="/mobile" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileTopPage /></ProtectedRoute>} />
           {/* Inventory Management */}
           <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
           <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />
@@ -175,11 +181,28 @@ function App() {
             path="/user/management"
             element={<ProtectedRoute isAuthenticated={isAuthenticated && isStaffOrSuperuser}><UserManagement /></ProtectedRoute>}
           />
+
+          {/* Mobile Protected Routes */}
+          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileLayout onLogout={handleLogout} /></ProtectedRoute>}>
+            <Route path="/mobile" element={<MobileTopPage />} />
+            <Route path="/mobile/goods-receipt" element={<MobileGoodsReceiptPage />} />
+            <Route path="/mobile/goods-issue" element={<MobileGoodsIssuePage />} />
+            <Route path="/mobile/location-transfer" element={<MobileLocationTransferPage />} />
+          </Route>
+
           {/* Redirect any other path to top page if authenticated, or login if not */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
       <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   )
 }

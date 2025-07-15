@@ -1,0 +1,97 @@
+/* MobileLocationTransferPage.css */
+
+.mobile-page-container {
+    padding: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.page-title {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.form-control-lg {
+    font-size: 1.25rem;
+    padding: 0.75rem 1rem;
+    height: auto;
+}
+
+.btn-lg {
+    font-size: 1.25rem;
+    padding: 0.75rem 1rem;
+}
+
+.input-group .btn {
+    font-size: 1.25rem;
+}
+
+/* Modal styles inspired by MobileGoodsReceiptPage.css */
+.mobile-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+    padding: 1rem;
+}
+
+.mobile-modal-content {
+    background-color: #fff;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.form-control-plaintext.form-control-lg {
+    padding-top: .5rem;
+    padding-bottom: .5rem;
+    border: 1px solid #ced4da;
+    border-radius: .3rem;
+    background-color: #e9ecef;
+}
+
+/* Camera View styles from location_transfer.html */
+.camera-view-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    z-index: 1060; /* Higher than modal */
+}
+
+.camera-video-element {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.close-camera-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1061;
+}
+
+.camera-targeting-guide {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80%;
+    height: 30%;
+    border: 3px solid rgba(255, 0, 0, 0.7);
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    pointer-events: none;
+}
