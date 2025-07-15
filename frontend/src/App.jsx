@@ -191,7 +191,7 @@ function AppContent() {
           </Route>
 
           {/* Redirect any other path to top page if authenticated, or login if not */}
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={isAuthenticated ? <Navigate to="/" /> : <Navigate to="/login" />} />
         </Routes>
       </main>
       <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />

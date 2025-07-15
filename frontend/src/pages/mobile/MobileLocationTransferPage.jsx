@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getCookie } from '../../utils/cookies';
-import { BrowserMultiFormatReader } from '@zxing/browser';
-import { NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileLocationTransferPage.css'; // 新しいCSSファイルをインポート
 
 const MobileLocationTransferPage = () => {
