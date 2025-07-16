@@ -87,7 +87,7 @@ const MobileLoginPage = () => {
                     />
                 </div>
                 <div className="form-group">
-                    <button type="submit">ログイン2</button>
+                    <button type="submit">ログイン</button>
                 </div>
             </form>
         </div>

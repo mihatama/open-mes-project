@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 import { getCookie } from './utils/cookies.js';
@@ -33,162 +33,159 @@ import MobileGoodsIssuePage from './pages/mobile/MobileGoodsIssuePage.jsx';
 import MobileLocationTransferPage from './pages/mobile/MobileLocationTransferPage.jsx';
 import MobileLoginPage from './pages/mobile/MobileLoginPage.jsx';
 
-// モバイルデバイスからのアクセス時にリダイレクトを行うためのコンポーネント
+// モバイル専用リダイレクト処理
 const MobileRedirector = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isMobilePage = location.pathname.startsWith('/mobile');
-    const isLoginPage = location.pathname === '/login';
+    const path = location.pathname;
+    const isMobilePath = path.startsWith('/mobile');
+    const isLoginPath = path === '/login';
 
-    // モバイルデバイスで、かつモバイルページでもログインページでもない場合にリダイレクト
-    if (isMobile && !isMobilePage && !isLoginPage) {
-      navigate('/mobile', { replace: true });
+    if (isMobile) {
+      // モバイル端末かつデスクトップ用ログインならモバイルログインへ
+      if (isLoginPath) {
+        navigate('/mobile/login', { replace: true });
+        return;
+      }
+      // モバイル端末かつモバイル以外のページならモバイルトップへ
+      if (!isMobilePath) {
+        navigate('/mobile', { replace: true });
+        return;
+      }
+    }
+
+    if (!isMobile && isMobilePath) {
+      // デスクトップ端末かつモバイルページならPCトップへ
+      navigate('/', { replace: true });
+      return;
     }
   }, [location.pathname, navigate]);
 
-  return null; // このコンポーネントはUIを描画しません
+  return null;
 };
 
 function AppContent() {
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isStaffOrSuperuser, setIsStaffOrSuperuser] = useState(false);
-  const [isMenuOpen, setMenuOpen] = useState(false);
-  const [isVersionModalOpen, setVersionModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // ローディング状態を追加
+  const [isStaff, setIsStaff] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const checkAuthStatus = useCallback(async () => {
-  try {
-    const response = await fetch('/api/users/session/', { credentials: 'include' });
-    const data = await response.json();
-    setIsAuthenticated(data.isAuthenticated);
-    setIsStaffOrSuperuser(data.isStaff || data.isSuperuser);
-  } catch (error) {
-    console.error('Authentication check failed:', error);
-    setIsAuthenticated(false);
-    setIsStaffOrSuperuser(false);
-  } finally {
-    setIsLoading(false);
-  }
-}, []);
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/users/session/', { credentials: 'include' });
+      const json = await res.json();
+      setIsAuthenticated(json.isAuthenticated);
+      setIsStaff(json.isStaff || json.isSuperuser);
+    } catch {
+      setIsAuthenticated(false);
+      setIsStaff(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => {
-    // アプリケーションのロード時にセッション情報を確認
-    checkAuthStatus();
-  }, [checkAuthStatus]); // コンポーネントのマウント時に一度だけ実行
+  useEffect(() => { checkAuth(); }, [checkAuth]);
 
-  const handleLoginSuccess = async () => {
-    // ログイン成功後に認証状態を再チェック
-    await checkAuthStatus();
-  };
+  const onLoginSuccess = async () => { await checkAuth(); };
 
-  const handleLogout = async () => {
+  const onLogout = async () => {
     const csrfToken = getCookie('csrftoken');
     await fetch('/api/users/logout/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken,
-      },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      credentials: 'include'
     });
-    // 状態を更新して、UI側でリダイレクトをハンドリングさせる
     setIsAuthenticated(false);
-    setIsStaffOrSuperuser(false);
+    setIsStaff(false);
   };
 
-  const toggleMenu = () => {
-    setMenuOpen(!isMenuOpen);
-  };
-
-  const closeMenu = () => {
-    setMenuOpen(false);
-  };
+  const toggleMenu = () => setMenuOpen(prev => !prev);
+  const closeMenu = () => setMenuOpen(false);
 
   useEffect(() => {
-    // Add or remove class from body to prevent scrolling when menu is open
-    if (isMenuOpen) {
-      document.body.classList.add('menu-open-no-scroll');
-    } else {
-      document.body.classList.remove('menu-open-no-scroll');
-    }
+    document.body.classList.toggle('menu-open-no-scroll', menuOpen);
+    return () => { document.body.classList.remove('menu-open-no-scroll'); };
+  }, [menuOpen]);
 
-    // Cleanup function to remove the class when the component unmounts
-    return () => {
-      document.body.classList.remove('menu-open-no-scroll');
-    };
-  }, [isMenuOpen]);
+  if (loading) return <div>Loading...</div>;
 
-  if (isLoading) {
-    return <div>Loading...</div>; // またはスピナーなどを表示
-  }
-
-  const isMobilePath = location.pathname.startsWith('/mobile');
+  const isMobileRoute = location.pathname.startsWith('/mobile');
 
   return (
-    <>
+    <>      
       <MobileRedirector />
-      {isAuthenticated && location.pathname !== '/mobile/login' && (
-        <>
-          <Header onMenuClick={toggleMenu} isMenuOpen={isMenuOpen} isAuthenticated={isAuthenticated} />
-          <SideMenu
-            isOpen={isMenuOpen}
-            isStaffOrSuperuser={isStaffOrSuperuser}
-            onVersionClick={() => setVersionModalOpen(true)}
-              onLinkClick={() => {
-                setMenuOpen(false); // サイドメニューを閉じる
-              }}
 
+      {isAuthenticated && !isMobileRoute && (
+        <>
+          <Header onMenuClick={toggleMenu} isMenuOpen={menuOpen} isAuthenticated={isAuthenticated} />
+          <SideMenu
+            isOpen={menuOpen}
+            isStaffOrSuperuser={isStaff}
+            onVersionClick={() => setVersionModalOpen(true)}
+            onLinkClick={closeMenu}
+            onLogout={onLogout}
+            isAuthenticated={isAuthenticated}
           />
-          {isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
+          {menuOpen && <div id="menu-overlay" onClick={closeMenu} />}
         </>
       )}
-      {isAuthenticated && !isMobilePath && isMenuOpen && <div id="menu-overlay" onClick={toggleMenu}></div>}
-      <main className={isAuthenticated && !isMobilePath ? "main-contents container" : ""}>
+
+      <main className={isAuthenticated && !isMobileRoute ? 'main-contents container' : ''}>
         <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage onLoginSuccess={handleLoginSuccess} />} />
-          {/* モバイルデバイスの場合、ログインしていなくても /mobile/login に遷移 */}
-          <Route path="/mobile/login" element={isAuthenticated ? <Navigate to="/mobile" /> : <MobileLoginPage />} />
+          {/* Desktop Login */}
+          <Route
+            path="/login"
+            element={
+              isAuthenticated
+                ? <Navigate to="/" replace />
+                : <LoginPage onLoginSuccess={onLoginSuccess} />
+            }
+          />
+
+          {/* Mobile Login */}
+          <Route
+            path="/mobile/login"
+            element={
+              isAuthenticated
+                ? <Navigate to="/mobile" replace />
+                : <MobileLoginPage />
+            }
+          />
 
           {/* Desktop Protected Routes */}
-            {/* 認証が必要なルート */}
-            <Route path="/" element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaffOrSuperuser} isAuthenticated={isAuthenticated} onLogout={handleLogout} /></ProtectedRoute>} />
-
-            {/* 在庫管理 */}
-            <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
-            <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />
-            <Route path="/inventory/shipment" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ShipmentSchedule /></ProtectedRoute>} />
-            <Route path="/inventory/purchase" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsReceipt /></ProtectedRoute>} />
-            <Route path="/inventory/issue" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsIssue /></ProtectedRoute>} />
-
-            {/* 製造管理 */}
-            <Route path="/production/plan" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProductionPlan /></ProtectedRoute>} />
-            <Route path="/production/parts-used" element={<ProtectedRoute isAuthenticated={isAuthenticated}><PartsUsed /></ProtectedRoute>} />
-            <Route path="/production/material-allocation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MaterialAllocation /></ProtectedRoute>} />
-            <Route path="/production/work-progress" element={<ProtectedRoute isAuthenticated={isAuthenticated}><WorkProgress /></ProtectedRoute>} />
-
-            {/* 品質管理 */}
-
+          <Route
+            path="/"
+            element={<ProtectedRoute isAuthenticated={isAuthenticated}><TopPage isStaffOrSuperuser={isStaff} isAuthenticated={isAuthenticated} onLogout={onLogout} /></ProtectedRoute>}
+          />
+          <Route path="/inventory/inquiry" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryInquiry /></ProtectedRoute>} />
+          <Route path="/inventory/stock-movement-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StockMovementHistory /></ProtectedRoute>} />
+          <Route path="/inventory/shipment" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ShipmentSchedule /></ProtectedRoute>} />
+          <Route path="/inventory/purchase" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsReceipt /></ProtectedRoute>} />
+          <Route path="/inventory/issue" element={<ProtectedRoute isAuthenticated={isAuthenticated}><GoodsIssue /></ProtectedRoute>} />
+          <Route path="/production/plan" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProductionPlan /></ProtectedRoute>} />
+          <Route path="/production/parts-used" element={<ProtectedRoute isAuthenticated={isAuthenticated}><PartsUsed /></ProtectedRoute>} />
+          <Route path="/production/material-allocation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MaterialAllocation /></ProtectedRoute>} />
+          <Route path="/production/work-progress" element={<ProtectedRoute isAuthenticated={isAuthenticated}><WorkProgress /></ProtectedRoute>} />
           <Route path="/quality/process-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><ProcessInspection /></ProtectedRoute>} />
           <Route path="/quality/acceptance-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AcceptanceInspection /></ProtectedRoute>} />
           <Route path="/quality/master-creation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><QualityMasterCreation /></ProtectedRoute>} />
-          {/* Machine Management */}
           <Route path="/machine/start-inspection" element={<ProtectedRoute isAuthenticated={isAuthenticated}><StartInspection /></ProtectedRoute>} />
           <Route path="/machine/inspection-history" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InspectionHistory /></ProtectedRoute>} />
           <Route path="/machine/master-creation" element={<ProtectedRoute isAuthenticated={isAuthenticated}><MachineMasterCreation /></ProtectedRoute>} />
-          {/* Data Maintenance & Account */}
           <Route path="/data/import" element={<ProtectedRoute isAuthenticated={isAuthenticated}><DataImport /></ProtectedRoute>} />
           <Route path="/user/settings" element={<ProtectedRoute isAuthenticated={isAuthenticated}><UserSettings /></ProtectedRoute>} />
           <Route
             path="/user/management"
-            element={<ProtectedRoute isAuthenticated={isAuthenticated && isStaffOrSuperuser}><UserManagement /></ProtectedRoute>}
+            element={<ProtectedRoute isAuthenticated={isAuthenticated && isStaff}><UserManagement /></ProtectedRoute>}
           />
 
           {/* Mobile Protected Routes */}
-          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileLayout onLogout={handleLogout} /></ProtectedRoute>}>
+          <Route element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileLayout onLogout={onLogout} /></ProtectedRoute>}>
             <Route path="/mobile" element={<MobileTopPage />} />
             <Route path="/mobile/goods-receipt" element={<MobileGoodsReceiptPage />} />
             <Route path="/mobile/goods-issue" element={<MobileGoodsIssuePage />} />
@@ -196,17 +193,16 @@ function AppContent() {
           </Route>
         </Routes>
       </main>
-      <VersionModal isOpen={isVersionModalOpen} onClose={() => setVersionModalOpen(false)} />
+
+      <VersionModal isOpen={versionModalOpen} onClose={() => setVersionModalOpen(false)} />
     </>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <Router>
       <AppContent />
     </Router>
-  )
+  );
 }
-
-export default App
