@@ -1,0 +1,50 @@
+.mobile-login-container {
+    padding: 20px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+.mobile-login-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+}
+.mobile-login-form .form-group {
+    margin-bottom: 20px;
+}
+.mobile-login-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.mobile-login-form input[type="text"],
+.mobile-login-form input[type="password"] {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1.1em;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+.mobile-login-form .error-message {
+    color: #dc3545;
+    font-size: 0.95em;
+    margin-top: 10px;
+    text-align: center;
+}
+.mobile-login-form button[type="submit"] {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+.mobile-login-form button[type="submit"]:hover,
+.mobile-login-form button[type="submit"]:focus {
+    background-color: #0056b3;
+}
