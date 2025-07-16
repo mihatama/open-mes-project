@@ -161,7 +161,7 @@ const MobileLocationTransferPage = () => {
         .decodeFromVideoDevice(undefined, videoRef.current,
           (result, error, ctrl) => {
             if (result) {
-              // 読み取り完了時にカメラ停止
+              // Successful scan, stop the camera
               ctrl.stop();
               setCameraState({ isOpen: false, targetSetter: null });
               cameraState.targetSetter(result.getText());
@@ -176,12 +176,14 @@ const MobileLocationTransferPage = () => {
         .then(ctrl => { controls = ctrl; })
         .catch(err => console.error(err));
       return () => {
-        // クリーンアップ時にも停止
+        // Cleanup function to stop the camera when the component unmounts or isOpen changes.
         if (controls) {
           controls.stop();
         }
       };
     }
+    // If cameraState.isOpen is false, ensure the camera is stopped.
+    codeReader.current.reset();
   }, [cameraState.isOpen, cameraState.targetSetter]);
 
   const renderMessage = (msg) => {
