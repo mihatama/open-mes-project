@@ -65,6 +65,7 @@ def _serialize_bound_field(bound_field):
 
 
 
+@login_required
 def inspection_item_create(request):
     if request.method == 'POST':
         form = InspectionItemForm(request.POST)
@@ -122,6 +123,7 @@ def inspection_item_create(request):
     return JsonResponse({'success': False, 'message': '無効なリクエストメソッドです。'}, status=405)
 
 
+@login_required
 def inspection_item_update(request, pk):
     item = get_object_or_404(InspectionItem, pk=pk)
     if request.method == 'POST':
@@ -184,6 +186,7 @@ def inspection_item_update(request, pk):
     return JsonResponse({'success': False, 'message': '無効なリクエストメソッドです。'}, status=405)
 
 
+@login_required
 def inspection_item_delete(request, pk):
     item = get_object_or_404(InspectionItem, pk=pk)
     if request.method == 'POST':
@@ -262,7 +265,10 @@ def record_inspection_result_view(request, item_pk):
         try:
             measurement_details_payload = json.loads(request.POST.get('measurement_details_payload', '[]'))
         except json.JSONDecodeError:
-            return JsonResponse({'success': False, 'message': '検査詳細の形式が無効です。'}, status=400)
+            return JsonResponse({
+                'success': False, 
+                'message': '検査詳細の形式が無効です。JSONデコードに失敗しました。入力データを確認してください。',
+            }, status=400)
 
         valid_detail_forms = []
         all_details_data_valid = True
@@ -281,7 +287,12 @@ def record_inspection_result_view(request, item_pk):
                 try:
                     measurement_detail_instance = MeasurementDetail.objects.get(pk=md_pk, inspection_item=inspection_item)
                 except MeasurementDetail.DoesNotExist:
-                    all_details_data_valid = False; detail_errors[f'detail_{idx}'] = '無効な測定項目です。'; break
+                    all_details_data_valid = False
+                    detail_errors[f'detail_{idx}'] = f'無効な測定項目です。ID: {md_pk} はこの検査項目に属していません。'
+                    break
+                except Exception as e:
+                    all_details_data_valid = False
+                    detail_errors[f'detail_{idx}'] = f'測定項目の取得中にエラーが発生しました。ID: {md_pk}, エラー: {str(e)}'
 
                 form_data_for_detail = {'measurement_detail': measurement_detail_instance.pk}
                 if measurement_detail_instance.measurement_type == 'quantitative':
@@ -305,11 +316,15 @@ def record_inspection_result_view(request, item_pk):
                 return JsonResponse({'success': True, 'message': '検査結果を登録しました。'})
             else:
                 errors = {f: e[0] for f, e in result_form.errors.items()}
-                errors.update(detail_errors)
-                return JsonResponse({'success': False, 'message': '入力内容に誤りがあります（詳細）。', 'errors': errors}, status=400)
+                # Detail errors should be nested under a specific key, not mixed with top-level errors
+                if detail_errors:
+                    errors['measurement_details'] = detail_errors
+                return JsonResponse({
+                    'success': False,
+                    'message': '入力内容に誤りがあります（詳細）。',
+                    'errors': errors
+                }, status=400)
         else:
-            errors = {f: e[0] for f, e in result_form.errors.items()}
-            errors.update(detail_errors) # Include any parsing errors for details if they occurred before form validation
             return JsonResponse({'success': False, 'message': '入力内容に誤りがあります。', 'errors': errors}, status=400)
 
     return JsonResponse({'success': False, 'message': 'POSTリクエストが必要です。'}, status=405)

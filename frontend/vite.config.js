@@ -5,12 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Djangoサーバーに転送するパスのプレフィックス
-      '/users': {
-        target: 'http://backend:8000',
-        changeOrigin: true,
-      },
-      '/api': {
+      // DjangoバックエンドへのAPIリクエストをプロキシする設定
+      // /api, /users だけでなく、/quality など他のアプリケーションへのリクエストも転送する
+      '^/(api|admin|quality|inventory|production|machine|master|mobile|users|__debug__|static)/.*': {
         target: 'http://backend:8000',
         changeOrigin: true,
       },

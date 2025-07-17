@@ -44,13 +44,15 @@ DEBUG_TOOLBAR_CONFIG = {
 
 # フロントエンドのオリジンを信頼する設定
 # これにより、Vite開発サーバー(localhost:5173)からのPOSTリクエストが許可されます。
-CSRF_TRUSTED_ORIGINS = [
+CSRF_TRUSTED_ORIGINS = [ # ブラウザで 127.0.0.1 を使用する場合と localhost を使用する場合の両方に対応
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
 ]
 
 # CORS設定: Vite開発サーバーからのAPIリクエストを許可
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
+    'http://127.0.0.1:5173',
 ]
 
 # Cookie を使用したクロスオリジンリクエストを許可する
