@@ -58,66 +58,6 @@ const DynamicField = ({ fieldName, config, value, onChange, error }) => {
         <input type={type} id={inputId} name={fieldName} value={value || ''} onChange={onChange} className={`form-control ${error ? 'is-invalid' : ''}`} step={type === 'number' ? 'any' : undefined}/>
     );
 };
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Sortable from 'sortablejs';
-import { getCookie } from '../utils/cookies';
-
-// This is a complex, single-file component to mimic the structure and functionality of master_creation.html.
-// In a typical large-scale React application, this would be broken down into smaller, reusable components.
-
-const modalStyles = `
-.custom-modal-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex; justify-content: center; align-items: center; z-index: 1050;
-}
-.custom-modal-content {
-    background-color: white; padding: 25px; border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    width: 90%; max-width: 1140px; text-align: left;
-    display: flex; flex-direction: column; max-height: 95vh;
-}
-.custom-modal-content h3 { margin-top: 0; margin-bottom: 15px; color: #333; font-size: 1.75rem; }
-.custom-modal-form-body { overflow-y: auto; flex-grow: 1; padding: 5px; }
-.custom-modal-actions {
-    margin-top: 20px; text-align: right; border-top: 1px solid #dee2e6; padding-top: 15px;
-}
-.invalid-feedback { display: none; width: 100%; margin-top: .25rem; font-size: .875em; color: #dc3545; }
-.is-invalid ~ .invalid-feedback { display: block; }
-#mainInspectionItemFieldsContainer {
-    display: flex; flex-wrap: nowrap; gap: 1rem; overflow-x: auto; padding-bottom: 1rem;
-}
-#mainInspectionItemFieldsContainer .form-group { flex: 0 0 auto; min-width: 200px; }
-.drag-handle { cursor: move; text-align: center; vertical-align: middle; }
-.formset-row .form-check-input { margin-left: auto; margin-right: auto; display: block; }
-`;
-
-const DynamicField = ({ fieldName, config, value, onChange, error }) => {
-    const inputId = `modal_id_${fieldName}`;
-
-    if (config.widget_type === 'Select') {
-        return (
-            <select id={inputId} name={fieldName} value={value || ''} onChange={onChange} className={`form-control ${error ? 'is-invalid' : ''}`}>
-                {(config.choices || []).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
-            </select>
-        );
-    }
-    if (config.widget_type === 'CheckboxInput') {
-        return (
-            <div className="form-check">
-                <input id={inputId} name={fieldName} type="checkbox" checked={!!value} onChange={onChange} className={`form-check-input ${error ? 'is-invalid' : ''}`} />
-                <label htmlFor={inputId} className="form-check-label">{config.label}</label>
-            </div>
-        );
-    }
-    if (config.widget_type === 'Textarea') {
-        return <textarea id={inputId} name={fieldName} value={value || ''} onChange={onChange} className={`form-control ${error ? 'is-invalid' : ''}`} rows="3" />;
-    }
-    const type = config.widget_type === 'NumberInput' ? 'number' : 'text';
-    return (
-        <input type={type} id={inputId} name={fieldName} value={value || ''} onChange={onChange} className={`form-control ${error ? 'is-invalid' : ''}`} step={type === 'number' ? 'any' : undefined}/>
-    );
-};
 
 const QualityMasterCreation = () => {
     const [items, setItems] = useState([]);
@@ -299,7 +239,7 @@ const QualityMasterCreation = () => {
         setGlobalMessage({ text: '', type: '' });
         
         const formData = new FormData();
-        formData.append('csrfmiddlewaretoken', getCookie('csrftoken')); // CSRFトークンをformDataに追加
+        formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
         for (const key in mainForm) {
             let value = mainForm[key].value;
@@ -336,11 +276,8 @@ const QualityMasterCreation = () => {
             const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'), // CSRFトークンをヘッダーに追加
-                }
+                credentials: 'include', // セッションクッキーをリクエストに含める
+                headers: { 'Accept': 'application/json' }
             });
             const result = await response.json();
 
@@ -356,32 +293,6 @@ const QualityMasterCreation = () => {
             }
         } catch (err) {
             setGlobalMessage({ text: `送信中にエラーが発生しました: ${err.message}`, type: 'danger' });
-            // Log the full error for debugging:
-                    if (err instanceof TypeError && err.message.includes('Failed to fetch') || !(response && response.text)) {
-                console.error("Fetch error: Possible network issue or CORS problem.", err);
-                setGlobalMessage({ 
-                    text: "サーバーに接続できませんでした。ネットワーク接続を確認するか、しばらく待ってから再試行してください。", 
-                    type: 'danger' 
-                });
-            } else if (err instanceof SyntaxError) {
-                console.error("JSON Parse Error:", err);
-                setGlobalMessage({ text: "サーバーから無効なデータが返されました。管理者に連絡してください。", type: 'danger' });
-                // Log the text of the invalid response for debugging
-                try {
-                    const errorBody = await response.text(); // Read the raw response text
-                    if (errorBody.includes("<!DOCTYPE html>") || errorBody.includes("<html")) {
-                        err.message = "サーバーからHTMLが返されました。APIエンドポイントを確認してください。";
-                        console.error("Response (HTML):", errorBody);
-                    } else {
-                        console.error("Unexpected JSON Syntax:", err);
-                    }                    
-                } catch (textError) {
-                    console.error("Error reading response text:", textError);
-                    console.error("Unexpected JSON Syntax:", err);
-                }
-            }else {
-                console.error("handleSubmit error:", err);
-            }
         }
     };
     
