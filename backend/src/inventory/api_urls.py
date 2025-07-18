@@ -18,9 +18,4 @@ urlpatterns = [
     # These are kept separate as they are specific actions not tied to a single resource instance.
     path('purchase-order/csv-template/', rest_views.PurchaseOrderCSVTemplateView.as_view(), name='purchase_order_csv_template'),
     path('purchase-order/import-csv/', rest_views.PurchaseOrderImportCSVView.as_view(), name='purchase_order_import_csv'),
-
-    # Endpoint for mobile screen to find items by location.
-    # This can be kept as a standalone endpoint or integrated into InventoryViewSet as a custom list route.
-    # Keeping it separate for now for clarity.
-    path('inventories-by-location/', rest_views.get_inventory_by_location_api, name='get_inventory_by_location'),
 ]

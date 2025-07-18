@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Item, Supplier, Warehouse
+from rest_framework.validators import UniqueValidator
 
 class ItemSerializer(serializers.ModelSerializer):
     # Override choice fields to return their display names for list views, as expected by the frontend.
@@ -22,10 +23,10 @@ class ItemCreateUpdateSerializer(serializers.ModelSerializer):
         # Add custom error messages for unique fields
         extra_kwargs = {
             'code': {
-                'validators': [serializers.UniqueValidator(queryset=Item.objects.all(), message='この品番コードは既に使用されています。')],
+                'validators': [UniqueValidator(queryset=Item.objects.all(), message='この品番コードは既に使用されています。')],
             },
             'name': {
-                'validators': [serializers.UniqueValidator(queryset=Item.objects.all(), message='この品番名は既に使用されています。')],
+                'validators': [UniqueValidator(queryset=Item.objects.all(), message='この品番名は既に使用されています。')],
             },
         }
 
@@ -44,7 +45,7 @@ class SupplierCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ['id', 'supplier_number', 'name', 'contact_person', 'phone', 'email', 'address']
         extra_kwargs = {
             'supplier_number': {
-                'validators': [serializers.UniqueValidator(queryset=Supplier.objects.all(), message='このサプライヤー番号は既に使用されています。')],
+                'validators': [UniqueValidator(queryset=Supplier.objects.all(), message='このサプライヤー番号は既に使用されています。')],
             },
         }
 
@@ -80,6 +81,6 @@ class WarehouseCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ['id', 'warehouse_number', 'name', 'location']
         extra_kwargs = {
             'warehouse_number': {
-                'validators': [serializers.UniqueValidator(queryset=Warehouse.objects.all(), message='この倉庫番号は既に使用されています。')],
+                'validators': [UniqueValidator(queryset=Warehouse.objects.all(), message='この倉庫番号は既に使用されています。')],
             },
         }
