@@ -119,7 +119,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'base.context_processors.my_settings',
             ],
         },
     },
@@ -210,9 +209,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # カスタムユーザー
 AUTH_USER_MODEL = 'users.CustomUser'
-LOGIN_URL = 'users:login'  # ログインページのURL
-LOGIN_REDIRECT_URL = 'main'  # ログイン後のリダイレクト先
-LOGOUT_REDIRECT_URL = 'main'  # ログアウト後のリダイレクト先
+# ログインページのURL。Reactフロントエンドを使用するため、URL名をリバース解決するのではなく、
+# フロントエンドのルーターが処理する固定パス '/login/' に設定します。
+# これにより、LoginRequiredMixinなどがこのパスにリダイレクトし、Reactがログインページを表示できます。
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'  # ログイン後のリダイレクト先
+LOGOUT_REDIRECT_URL = '/'  # ログアウト後のリダイレクト先
 
 # settings.py
 # ... other settings

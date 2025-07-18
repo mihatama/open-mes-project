@@ -3,8 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken as DefaultObtainAuthToken
-from .serializers import CustomUserSerializer, CustomAuthTokenSerializer, AdminUserSerializer
-from django.contrib.auth import login, logout
+from .serializers import CustomUserSerializer, CustomAuthTokenSerializer, AdminUserSerializer, UserProfileUpdateSerializer, PasswordChangeSerializer
+from django.contrib.auth import login, logout, update_session_auth_hash
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.http import JsonResponse
@@ -74,13 +74,69 @@ def get_session_info(request):
     """
     現在のセッション情報を返し、CSRFクッキーを保証するビュー。
     """
+    is_expired = getattr(request.user, 'is_password_expired', False)
     return JsonResponse({
         'isAuthenticated': True,
         'isStaff': request.user.is_staff,
         'isSuperuser': request.user.is_superuser,
         'username': request.user.username,
+        'isPasswordExpired': is_expired,
     })
 
+class UserSettingsDetailView(APIView):
+    """
+    API endpoint for retrieving and updating the authenticated user's profile.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Return the current user's profile data.
+        """
+        user = request.user
+        # Use the AdminUserSerializer to include fields like is_staff
+        serializer = AdminUserSerializer(user)
+        return Response(serializer.data)
+
+    def patch(self, request, *args, **kwargs):
+        """
+        Update the current user's profile.
+        """
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(AdminUserSerializer(user).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserPasswordChangeView(APIView):
+    """
+    API endpoint for changing the user's password.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data['new_password1'])
+            user.save()
+            # To keep the user logged in after password change
+            update_session_auth_hash(request, user)
+            return Response({'message': 'パスワードが正常に変更されました。'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class APITokenView(APIView):
+    """
+    API endpoint for retrieving and regenerating the user's API token.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        token, _ = Token.objects.get_or_create(user=request.user)
+        token.delete()
+        new_token = Token.objects.create(user=request.user)
+        return Response({'message': 'APIトークンが再生成されました。', 'api_token': new_token.key})
 
 class IsStaffOrSuperuser(permissions.BasePermission):
     """

@@ -1,10 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Item, Supplier, Warehouse # master.models を直接参照
-from .forms import ItemForm, SupplierForm, WarehouseForm
 from .serializers import (
     ItemSerializer, SupplierSerializer, WarehouseSerializer,
     ItemCreateUpdateSerializer, SupplierCreateUpdateSerializer, WarehouseCreateUpdateSerializer
@@ -18,161 +17,81 @@ from django.core.exceptions import ValidationError
 import csv
 import io
 
-
-class ItemCreateAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        item_id = request.data.get('id')
-        instance = None
-        if item_id:
-            instance = get_object_or_404(Item, pk=item_id)
-        
-        form = ItemForm(request.data, instance=instance)
-        if form.is_valid():
-            item = form.save()
-            message = '品番マスターを更新しました。' if instance else '品番マスターを登録しました。'
-            return Response({'status': 'success', 'message': message, 'item_id': item.id}, status=status.HTTP_200_OK)
-        else:
-            return Response({'status': 'error', 'errors': form.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-class SupplierCreateAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        supplier_id = request.data.get('id')
-        instance = None
-        if supplier_id:
-            instance = get_object_or_404(Supplier, pk=supplier_id)
-
-        form = SupplierForm(request.data, instance=instance)
-        if form.is_valid():
-            supplier = form.save()
-            message = 'サプライヤーマスターを更新しました。' if instance else 'サプライヤーマスターを登録しました。'
-            return Response({'status': 'success', 'message': message, 'supplier_id': supplier.id}, status=status.HTTP_200_OK)
-        else:
-            return Response({'status': 'error', 'errors': form.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-class WarehouseCreateAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        warehouse_id = request.data.get('id') # UUID
-        instance = None
-        if warehouse_id:
-            instance = get_object_or_404(Warehouse, pk=warehouse_id)
-
-        form = WarehouseForm(request.data, instance=instance)
-        if form.is_valid():
-            warehouse = form.save()
-            message = '倉庫マスターを更新しました。' if instance else '倉庫マスターを登録しました。'
-            return Response({'status': 'success', 'message': message, 'warehouse_id': warehouse.id}, status=status.HTTP_200_OK)
-        else:
-            return Response({'status': 'error', 'errors': form.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-class ItemListAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        items = Item.objects.all()
-        # The JS expects specific fields, including display versions for choices.
-        # Let's manually construct the data like the old view or ensure serializer provides it.
-        data = [{
-            'id': item.id,
-            'code': item.code,
-            'name': item.name,
-            'item_type': item.get_item_type_display(), # JS expects display value
-            'unit': item.unit,
-            'description': item.description if item.description else "",
-            'default_warehouse': item.default_warehouse if item.default_warehouse else "",
-            'default_location': item.default_location if item.default_location else "",
-            'provision_type': item.get_provision_type_display() if item.provision_type else "" # JS expects display value
-        } for item in items]
-        return Response({'data': data})
-
-class SupplierListAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        suppliers = Supplier.objects.all()
-        serializer = SupplierSerializer(suppliers, many=True)
-        return Response({'data': serializer.data})
-
-class WarehouseListAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
-        return Response({'data': serializer.data})
-
-class ItemDetailAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk, *args, **kwargs):
-        item = get_object_or_404(Item, pk=pk)
-        # The form expects raw choice values, not display values for item_type, provision_type
-        data = {
-            'id': item.id, 'name': item.name, 'code': item.code,
-            'item_type': item.item_type, # Raw value for form
-            'description': item.description, 'unit': item.unit,
-            'default_warehouse': item.default_warehouse, 'default_location': item.default_location,
-            'provision_type': item.provision_type # Raw value for form
-        }
-        return Response({'status': 'success', 'data': data})
-
-class SupplierDetailAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk, *args, **kwargs):
-        supplier = get_object_or_404(Supplier, pk=pk)
-        serializer = SupplierCreateUpdateSerializer(supplier) # Use serializer that matches form fields
+class CustomSuccessMessageMixin:
+    """
+    Mixin to customize success messages for create, update, and destroy actions,
+    and to format list/retrieve responses to match frontend expectations.
+    """
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
         return Response({'status': 'success', 'data': serializer.data})
 
-class WarehouseDetailAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({'status': 'success', 'data': serializer.data}) # Ensure consistent response structure
 
-    def get(self, request, pk, *args, **kwargs): # pk is UUID
-        warehouse = get_object_or_404(Warehouse, pk=pk)
-        serializer = WarehouseCreateUpdateSerializer(warehouse) # Use serializer that matches form fields
-        return Response({'status': 'success', 'data': serializer.data})
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        model_name = self.queryset.model._meta.verbose_name
+        return Response(
+            {'status': 'success', 'message': f'{model_name}を登録しました。', 'data': serializer.data},
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
-class ItemDeleteAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', True) # Default to PATCH
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        model_name = self.queryset.model._meta.verbose_name
+        return Response(
+            {'status': 'success', 'message': f'{model_name}を更新しました。', 'data': serializer.data},
+            status=status.HTTP_200_OK
+        )
 
-    def post(self, request, pk, *args, **kwargs): # JS uses POST
-        item = get_object_or_404(Item, pk=pk)
-        item_name = item.name
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        model_name = self.queryset.model._meta.verbose_name
+        instance_repr = str(instance)
         try:
-            item.delete()
-            return Response({'status': 'success', 'message': f'品番マスター「{item_name}」を削除しました。'})
+            self.perform_destroy(instance)
+            return Response({'status': 'success', 'message': f'{model_name}「{instance_repr}」を削除しました。'}, status=status.HTTP_200_OK)
         except ProtectedError:
-            return Response({'status': 'error', 'message': 'この品番マスターは他で使用されているため削除できません。関連データを確認してください。'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status': 'error', 'message': f'この{model_name}は他で使用されているため削除できません。関連データを確認してください。'}, status=status.HTTP_400_BAD_REQUEST)
 
-class SupplierDeleteAjaxAPIView(APIView):
+class ItemViewSet(CustomSuccessMessageMixin, viewsets.ModelViewSet):
+    queryset = Item.objects.all().order_by('code')
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk, *args, **kwargs): # JS uses POST
-        supplier = get_object_or_404(Supplier, pk=pk)
-        supplier_name = supplier.name
-        try:
-            supplier.delete()
-            return Response({'status': 'success', 'message': f'サプライヤー「{supplier_name}」を削除しました。'})
-        except ProtectedError:
-            return Response({'status': 'error', 'message': 'このサプライヤーは他で使用されているため削除できません。関連データを確認してください。'}, status=status.HTTP_400_BAD_REQUEST)
+    def get_serializer_class(self):
+        if self.action in ['list']:
+            return ItemSerializer
+        return ItemCreateUpdateSerializer
 
-class WarehouseDeleteAjaxAPIView(APIView):
+class SupplierViewSet(CustomSuccessMessageMixin, viewsets.ModelViewSet):
+    queryset = Supplier.objects.all().order_by('supplier_number')
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk, *args, **kwargs): # JS uses POST, pk is UUID
-        warehouse = get_object_or_404(Warehouse, pk=pk)
-        warehouse_name = warehouse.name
-        try:
-            warehouse.delete()
-            return Response({'status': 'success', 'message': f'倉庫「{warehouse_name}」を削除しました。'})
-        except ProtectedError:
-            return Response({'status': 'error', 'message': 'この倉庫は他で使用されているため削除できません。関連データを確認してください。'}, status=status.HTTP_400_BAD_REQUEST)
+    def get_serializer_class(self):
+        if self.action in ['list']:
+            return SupplierSerializer
+        return SupplierCreateUpdateSerializer
 
+class WarehouseViewSet(CustomSuccessMessageMixin, viewsets.ModelViewSet):
+    queryset = Warehouse.objects.all().order_by('warehouse_number')
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['list']:
+            return WarehouseSerializer
+        return WarehouseCreateUpdateSerializer
 
 # --- Base CSV Import APIView ---
 class BaseCSVImportAPIView(APIView):

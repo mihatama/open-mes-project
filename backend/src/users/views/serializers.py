@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from ..models import CustomUser
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import password_validation
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
 
 UserModel = get_user_model()
@@ -68,6 +70,41 @@ class CustomUserSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', '')
         )
 
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating user profile fields by the user themselves.
+    """
+    class Meta:
+        model = CustomUser
+        # Users can update their username and email.
+        fields = ['username', 'email', 'first_name', 'last_name']
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """
+    Serializer for password change endpoint.
+    """
+    old_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+    new_password1 = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+    new_password2 = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError(_("現在のパスワードが正しくありません。"))
+        return value
+
+    def validate(self, data):
+        if data['new_password1'] != data['new_password2']:
+            raise serializers.ValidationError({"new_password2": _("新しいパスワードが一致しません。")})
+        
+        # Django's built-in password validation
+        try:
+            password_validation.validate_password(data['new_password1'], self.context['request'].user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'new_password1': e.messages})
+
+        return data
+
 class AdminUserSerializer(serializers.ModelSerializer):
     """
     Serializer for user management in the admin interface.
@@ -79,7 +116,7 @@ class AdminUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'custom_id', 'username', 'email',
+            'id', 'custom_id', 'username', 'email', 'first_name', 'last_name',
             'is_staff', 'is_active', 'date_joined', 'password'
         ]
         read_only_fields = ['date_joined']

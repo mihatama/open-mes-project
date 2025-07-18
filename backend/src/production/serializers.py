@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ProductionPlan, PartsUsed # PartsUsed をインポート
+from .models import ProductionPlan, PartsUsed, MaterialAllocation, WorkProgress
 
 class ProductionPlanSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True) # 表示名用
@@ -93,3 +93,69 @@ class RequiredPartSerializer(serializers.Serializer):
 
     # このシリアライザは読み取り専用のデータを想定しています。
     # ビュー側で `data_for_serializer` を構築する際に、これらのフィールドに合致するデータを提供します。
+
+class MaterialAllocationSerializer(serializers.ModelSerializer):
+    """
+    材料引当モデルのためのシリアライザ
+    """
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    production_plan_name = serializers.CharField(source='production_plan.plan_name', read_only=True)
+
+    class Meta:
+        model = MaterialAllocation
+        fields = [
+            'id',
+            'production_plan',
+            'production_plan_name',
+            'material_code',
+            'allocated_quantity',
+            'allocation_datetime',
+            'status',
+            'status_display',
+            'remarks',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'status_display', 'production_plan_name']
+
+
+class WorkProgressSerializer(serializers.ModelSerializer):
+    """
+    作業進捗モデルのためのシリアライザ
+    """
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    production_plan_name = serializers.CharField(source='production_plan.plan_name', read_only=True)
+    operator_username = serializers.CharField(source='operator.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = WorkProgress
+        fields = [
+            'id', 'production_plan', 'production_plan_name', 'process_step',
+            'operator', 'operator_username', 'start_datetime', 'end_datetime',
+            'quantity_completed', 'actual_reported_quantity',
+            'defective_reported_quantity', 'status', 'status_display', 'remarks',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'created_at', 'updated_at', 'status_display',
+            'production_plan_name', 'operator_username'
+        ]
+
+    def validate(self, data):
+        """
+        Check that start_datetime is before end_datetime.
+        Handles both create (POST) and partial update (PATCH) scenarios.
+        """
+        if self.instance:  # This is an update
+            start = data.get('start_datetime', self.instance.start_datetime)
+            end = data.get('end_datetime', self.instance.end_datetime)
+        else:  # This is a create
+            start = data.get('start_datetime')
+            end = data.get('end_datetime')
+
+        if start and end:
+            if start >= end:
+                raise serializers.ValidationError({
+                    "end_datetime": "End datetime must be after start datetime."
+                })
+        return data

@@ -5,21 +5,18 @@ from rest_framework import status # HTTPステータスコードをインポー�
 from rest_framework.decorators import action # actionデコレータをインポート
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response # Responseをインポート
-from rest_framework.views import APIView
-from .models import ProductionPlan, PartsUsed, MaterialAllocation # Add MaterialAllocation
-from .models import WorkProgress # Import WorkProgress
-from .serializers import ProductionPlanSerializer, PartsUsedSerializer, RequiredPartSerializer
-from .forms import ProductionPlanDataEntryForm, PartsUsedDataEntryForm
+from .models import ProductionPlan, PartsUsed, MaterialAllocation, WorkProgress
+from .serializers import (
+    ProductionPlanSerializer, PartsUsedSerializer, RequiredPartSerializer,
+    MaterialAllocationSerializer, WorkProgressSerializer
+)
 from inventory.rest_views import StandardResultsSetPagination # inventoryアプリのページネーションクラスをインポート
 from django.db.models import Q # Qオブジェクトをインポート
-from django.db.models import ProtectedError
 from inventory.models import Inventory, StockMovement, SalesOrder # Add StockMovement and SalesOrder
 from rest_framework.filters import OrderingFilter # OrderingFilterをインポート
 from django.utils.dateparse import parse_datetime # 日時文字列のパース用
 from django.utils import timezone # timezoneをインポート
 from django.db import transaction # トランザクションのためにインポート
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404 # オブジェクト取得のためにインポート
 # from .models import Product, BillOfMaterialItem # BOMに関連するモデル (仮のインポート、実際には適切なモデルを定義・インポートしてください)
 # from .serializers import RequiredPartSerializer # BOM部品用のシリアライザ (仮のインポート)
 
@@ -553,163 +550,46 @@ class PartsUsedViewSet(viewsets.ModelViewSet):
     # permission_classes = [permissions.IsAuthenticated] # Example: Add authentication
 
 
-class ProductionPlanCreateAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class MaterialAllocationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows Material Allocations to be viewed or created.
+    """
+    queryset = MaterialAllocation.objects.all().select_related('production_plan').order_by('-allocation_datetime')
+    serializer_class = MaterialAllocationSerializer
+    pagination_class = StandardResultsSetPagination
+    # permission_classes = [IsAuthenticated]
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['material_code', 'allocated_quantity', 'allocation_datetime', 'status']
+    ordering = ['-allocation_datetime']
 
-    def post(self, request, *args, **kwargs):
-        instance_id = request.data.get('id')
-        instance = None
-        message_verb = "登録"
-
-        if instance_id:
-            try:
-                instance = ProductionPlan.objects.get(pk=instance_id)
-                message_verb = "更新"
-            except ProductionPlan.DoesNotExist:
-                return Response({'status': 'error', 'message': '指定された生産計画が見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
-
-        form = ProductionPlanDataEntryForm(request.data, instance=instance)
-
-        if form.is_valid():
-            try:
-                plan = form.save()
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'生産計画を{message_verb}しました。',
-                    'production_plan_id': plan.id
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                print(f"Error saving ProductionPlan: {str(e)}")
-                return Response({'status': 'error', 'message': f'保存中にエラーが発生しました: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response({'status': 'error', 'errors': form.errors, 'message': '入力内容にエラーがあります。'}, status=status.HTTP_400_BAD_REQUEST)
-
-class ProductionPlanListAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        plans = ProductionPlan.objects.all().order_by('-planned_start_datetime')[:200]
-        data = [{
-            'id': plan.id,
-            'plan_name': plan.plan_name,
-            'product_code': plan.product_code,
-            'planned_quantity': plan.planned_quantity,
-            'planned_start_datetime': plan.planned_start_datetime.strftime('%Y-%m-%d %H:%M') if plan.planned_start_datetime else '',
-            'planned_end_datetime': plan.planned_end_datetime.strftime('%Y-%m-%d %H:%M') if plan.planned_end_datetime else '',
-            'status': plan.get_status_display(),
-        } for plan in plans]
-        return Response({'data': data})
-
-class ProductionPlanDetailAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk, *args, **kwargs):
-        try:
-            plan = ProductionPlan.objects.get(pk=pk)
-            data = {
-                'id': plan.id,
-                'plan_name': plan.plan_name,
-                'product_code': plan.product_code,
-                'production_plan': plan.production_plan,
-                'planned_quantity': plan.planned_quantity,
-                'planned_start_datetime': plan.planned_start_datetime.strftime('%Y-%m-%dT%H:%M') if plan.planned_start_datetime else None,
-                'planned_end_datetime': plan.planned_end_datetime.strftime('%Y-%m-%dT%H:%M') if plan.planned_end_datetime else None,
-                'remarks': plan.remarks,
-                'status': plan.status,
-            }
-            return Response({'status': 'success', 'data': data})
-        except ProductionPlan.DoesNotExist:
-            return Response({'status': 'error', 'message': 'Production Plan not found'}, status=status.HTTP_404_NOT_FOUND)
-
-class ProductionPlanDeleteAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            plan = ProductionPlan.objects.get(pk=pk)
-            plan_name = plan.plan_name
-            plan.delete()
-            return Response({'status': 'success', 'message': f'生産計画「{plan_name}」を削除しました。'})
-        except ProductionPlan.DoesNotExist:
-            return Response({'status': 'error', 'message': '指定された生産計画が見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
-        except ProtectedError:
-            return Response({'status': 'error', 'message': 'この生産計画は他で使用されているため削除できません。'}, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        plan_id = self.request.query_params.get('production_plan_id')
+        if plan_id:
+            queryset = queryset.filter(production_plan_id=plan_id)
+        return queryset
 
 
-class PartsUsedCreateAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class WorkProgressViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows Work Progress records to be viewed or created.
+    """
+    queryset = WorkProgress.objects.all().select_related('production_plan', 'operator').order_by('production_plan', 'start_datetime')
+    serializer_class = WorkProgressSerializer
+    pagination_class = StandardResultsSetPagination
+    # permission_classes = [IsAuthenticated]
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['process_step', 'status', 'start_datetime', 'end_datetime', 'quantity_completed']
+    ordering = ['start_datetime']
 
-    def post(self, request, *args, **kwargs):
-        instance_id = request.data.get('id')
-        instance = None
-        message_verb = "登録"
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        plan_id = self.request.query_params.get('production_plan_id')
+        if plan_id:
+            queryset = queryset.filter(production_plan_id=plan_id)
 
-        if instance_id:
-            try:
-                instance = PartsUsed.objects.get(pk=instance_id)
-                message_verb = "更新"
-            except PartsUsed.DoesNotExist:
-                return Response({'status': 'error', 'message': '指定された使用部品レコードが見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
+        operator_id = self.request.query_params.get('operator_id')
+        if operator_id:
+            queryset = queryset.filter(operator_id=operator_id)
 
-        form = PartsUsedDataEntryForm(request.data, instance=instance)
-
-        if form.is_valid():
-            try:
-                part_used = form.save()
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'使用部品を{message_verb}しました。',
-                    'parts_used_id': part_used.id
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                print(f"Error saving PartsUsed: {str(e)}")
-                return Response({'status': 'error', 'message': f'保存中にエラーが発生しました: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response({'status': 'error', 'errors': form.errors, 'message': '入力内容にエラーがあります。'}, status=status.HTTP_400_BAD_REQUEST)
-
-class PartsUsedListAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        parts = PartsUsed.objects.all().order_by('-used_datetime')[:200]
-        data = [{
-            'id': part.id,
-            'production_plan': part.production_plan,
-            'part_code': part.part_code,
-            'warehouse': part.warehouse,
-            'quantity_used': part.quantity_used,
-            'used_datetime': part.used_datetime.strftime('%Y-%m-%d %H:%M') if part.used_datetime else '',
-        } for part in parts]
-        return Response({'data': data})
-
-class PartsUsedDetailAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk, *args, **kwargs):
-        try:
-            part = PartsUsed.objects.get(pk=pk)
-            data = {
-                'id': part.id,
-                'production_plan': part.production_plan,
-                'part_code': part.part_code,
-                'warehouse': part.warehouse,
-                'quantity_used': part.quantity_used,
-                'used_datetime': part.used_datetime.strftime('%Y-%m-%dT%H:%M') if part.used_datetime else None,
-            }
-            return Response({'status': 'success', 'data': data})
-        except PartsUsed.DoesNotExist:
-            return Response({'status': 'error', 'message': 'Parts Used record not found'}, status=status.HTTP_404_NOT_FOUND)
-
-class PartsUsedDeleteAjaxAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk, *args, **kwargs):
-        try:
-            part = PartsUsed.objects.get(pk=pk)
-            part_info = f"{part.part_code} for plan {part.production_plan}"
-            part.delete()
-            return Response({'status': 'success', 'message': f'使用部品レコード「{part_info}」を削除しました。'})
-        except PartsUsed.DoesNotExist:
-            return Response({'status': 'error', 'message': '指定された使用部品レコードが見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
-        except ProtectedError:
-            return Response({'status': 'error', 'message': 'この使用部品レコードは他で使用されているため削除できません。'}, status=status.HTTP_400_BAD_REQUEST)
+        return queryset

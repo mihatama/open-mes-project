@@ -1,9 +1,9 @@
 from django.urls import path
-from . import views # DataImportView, MasterCreationView のため
+# from . import views # No longer needed
 
 app_name = 'master'
 
 urlpatterns = [
-    path('data-import/', views.DataImportView.as_view(), name='data_import'),
-    path('master-creation/', views.MasterCreationView.as_view(), name='master_creation'), # Note: This view seems separate
+    # The URL patterns for the master app are now handled by api_urls.py
+    # to support the React frontend.
 ]

@@ -61,6 +61,18 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'received_quantity', 'order_date', 'status'] # is_first_time はデフォルト値があるので読み取り専用には含めません
 
+    def validate_order_number(self, value):
+        """
+        Validate that the order_number is unique.
+        """
+        # If updating an instance, exclude its own pk from the uniqueness check
+        instance = self.instance
+        if instance and instance.pk:
+            if PurchaseOrder.objects.filter(order_number=value).exclude(pk=instance.pk).exists():
+                raise serializers.ValidationError("この発注番号は他のレコードで既に使用されています。")
+        elif PurchaseOrder.objects.filter(order_number=value).exists():
+            raise serializers.ValidationError("この発注番号は既に使用されています。")
+        return value
 class InventorySerializer(serializers.ModelSerializer):
     """
     在庫情報モデルのためのシリアライザ。
