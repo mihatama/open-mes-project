@@ -85,33 +85,19 @@ const QualityMasterCreation = () => {
     const fetchItems = useCallback(async () => {
         setLoading(true);
         try {
-            // NOTE: The backend currently doesn't have a JSON API for listing items.
-            // The following is a workaround to parse items from the HTML page,
-            // mimicking how a user would see the initial data.
-            // A dedicated API endpoint (e.g., GET /api/quality/inspection-items/) is the recommended approach.
-            const response = await fetch('/quality/master_creation/list/');
+            // 推奨: バックエンドにJSONを返すAPIエンドポイントを準備してください。
+            const response = await fetch('/quality/master_creation/list/'); // ここを新しいJSON APIのURLに置き換えます
             if (!response.ok) throw new Error('Network response was not ok');
-            
-            const htmlText = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, "text/html");
-            const rows = Array.from(doc.querySelectorAll('tbody tr'));
-            const parsedItems = rows.map(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length < 6) return null; // Skip non-data rows
-                return {
-                    id: cells[5].querySelector('.edit-btn')?.dataset.id,
-                    code: cells[0]?.textContent.trim(),
-                    name: cells[1]?.textContent.trim(),
-                    inspection_type_display: cells[2]?.textContent.trim(),
-                    target_object_type_display: cells[3]?.textContent.trim(),
-                    is_active: cells[4]?.textContent.trim() === 'はい',
-                };
-            }).filter(item => item && item.id); // Filter out empty/header rows
-            setItems(parsedItems);
+            const data = await response.json();
+            // APIからのデータ構造に合わせてマッピングが必要な場合がありますが、
+            // 多くの場合はそのままステートにセットできます。
+            // バックエンドのJSONのキー名と、フロントエンドで使っているキー名が
+            // 一致しているか確認してください。
+            setItems(data);
+
 
         } catch (e) {
-            setListError(`一覧の読み込みに失敗しました: ${e.message}. Backend API might be missing.`);
+            setListError(`一覧の読み込みに失敗しました: ${e.message}`);
         } finally {
             setLoading(false);
         }

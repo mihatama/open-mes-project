@@ -119,7 +119,11 @@ def inspection_item_create(request):
             'formset_data': formset_data,
             'empty_form_fields_data': empty_form_fields_data,
             'page_title': '新規検査項目登録'
-        })
+        })    
+    elif request.method == 'GET' and not request.GET:  # Check if it's a GET request without form data
+        items = InspectionItem.objects.all().order_by('code')
+        items_data = [{'id': str(item.id), 'code': item.code, 'name': item.name, 'inspection_type_display': item.get_inspection_type_display(), 'target_object_type_display': item.get_target_object_type_display(), 'is_active': item.is_active} for item in items]
+        return JsonResponse(items_data, safe=False)
     return JsonResponse({'success': False, 'message': '無効なリクエストメソッドです。'}, status=405)
 
 
