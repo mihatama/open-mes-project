@@ -24,8 +24,19 @@ class ProcessInspectionView(View):
 
     def get(self, request, *args, **kwargs):
         inspection_items = InspectionItem.objects.filter(is_active=True).order_by('code')
-        context = {'inspection_items': inspection_items, 'page_title': '工程内検査 登録'}
-        return render(request, self.template_name, context)
+        # Instead of rendering HTML, return JSON
+        data = {
+            'inspection_items': [
+                {
+                    'id': str(item.id),
+                    'code': item.code,
+                    'name': item.name,
+                    'inspection_type_display': str(item.get_inspection_type_display()),
+                    'target_object_type_display': str(item.get_target_object_type_display()),
+                } for item in inspection_items
+            ]
+        }
+        return JsonResponse(data)
 
 class AcceptanceInspectionView(View):
     def get(self, request, *args, **kwargs):
@@ -329,6 +340,7 @@ def record_inspection_result_view(request, item_pk):
                     'errors': errors
                 }, status=400)
         else:
+            errors = {f: e[0] for f, e in result_form.errors.items()}
             return JsonResponse({'success': False, 'message': '入力内容に誤りがあります。', 'errors': errors}, status=400)
 
     return JsonResponse({'success': False, 'message': 'POSTリクエストが必要です。'}, status=405)
