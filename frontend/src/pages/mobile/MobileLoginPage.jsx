@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { getCookie } from '../../utils/cookies.js';
+import './MobileLoginPage.css';
 
-const MobileLoginPage = () => {
-    const [username, setUsername] = useState('');
+const MobileLoginPage = ({ onLoginSuccess }) => {
+    const [customId, setCustomId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const navigate = useNavigate();
-    const location = useLocation();
-
-    const from = location.state?.from?.pathname || "/mobile";
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -28,13 +24,12 @@ const MobileLoginPage = () => {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken,
                 },
-                body: JSON.stringify({ username, password }), // Djangoのデフォルトに合わせる
+                body: JSON.stringify({ custom_id: customId, password }),
                 credentials: 'include',
             });
 
             if (response.ok) {
-                // ログイン成功後、リダイレクト
-                navigate(from, { replace: true });
+                await onLoginSuccess();
             } else {
                 const data = await response.json().catch(() => null);
                 let errorMessage = 'ログインに失敗しました。ユーザー名とパスワードを確認してください。'; // デフォルトメッセージ
@@ -62,16 +57,14 @@ const MobileLoginPage = () => {
             {error && <p className="error-message">{error}</p>}
 
             <form onSubmit={handleLogin} className="mobile-login-form">
-                <input type="hidden" name="next" value={from} />
-
                 <div className="form-group">
-                    <label htmlFor="username">ユーザー名:</label>
+                    <label htmlFor="custom_id">ID:</label>
                     <input
                         type="text"
-                        id="username"
-                        name="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        id="custom_id"
+                        name="custom_id"
+                        value={customId}
+                        onChange={(e) => setCustomId(e.target.value)}
                         required
                     />
                 </div>

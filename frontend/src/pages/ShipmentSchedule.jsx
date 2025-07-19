@@ -11,7 +11,7 @@ const ShipmentSchedule = () => {
     try {
       // This API endpoint is used in other parts of the app (e.g., mobile goods issue)
       // to fetch sales orders. We filter by 'pending' status to get the shipment schedule.
-      const response = await fetch('/api/inventory/sales-orders/data/?search_status=pending');
+      const response = await fetch('/api/inventory/sales-orders/?search_status=pending');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

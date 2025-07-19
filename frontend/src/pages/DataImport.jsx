@@ -122,13 +122,13 @@ const getTableConfig = (type) => {
 };
 
 const DATA_CONFIG = {
-    'item': { name: '品番マスター', listUrl: '/api/master/item/list/ajax/', createUrl: '/api/master/item/create/ajax/', detailUrl: (id) => `/api/master/item/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/item/${id}/delete/ajax/` },
-    'supplier': { name: 'サプライヤーマスター', listUrl: '/api/master/supplier/list/ajax/', createUrl: '/api/master/supplier/create/ajax/', detailUrl: (id) => `/api/master/supplier/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/supplier/${id}/delete/ajax/` },
-    'warehouse': { name: '倉庫マスター', listUrl: '/api/master/warehouse/list/ajax/', createUrl: '/api/master/warehouse/create/ajax/', detailUrl: (id) => `/api/master/warehouse/${id}/detail/ajax/`, deleteUrl: (id) => `/api/master/warehouse/${id}/delete/ajax/` },
+    'item': { name: '品番マスター', listUrl: '/api/master/items/', createUrl: '/api/master/items/', detailUrl: (id) => `/api/master/items/${id}/`, deleteUrl: (id) => `/api/master/items/${id}/` },
+    'supplier': { name: 'サプライヤーマスター', listUrl: '/api/master/suppliers/', createUrl: '/api/master/suppliers/', detailUrl: (id) => `/api/master/suppliers/${id}/`, deleteUrl: (id) => `/api/master/suppliers/${id}/` },
+    'warehouse': { name: '倉庫マスター', listUrl: '/api/master/warehouses/', createUrl: '/api/master/warehouses/', detailUrl: (id) => `/api/master/warehouses/${id}/`, deleteUrl: (id) => `/api/master/warehouses/${id}/` },
     // Assuming other apps follow a similar URL pattern (kebab-case)
-    'inventory-purchase-entry': { name: '入庫予定', listUrl: '/api/inventory/purchase-order/list/ajax/', createUrl: '/api/inventory/purchase-order/create/ajax/', detailUrl: (id) => `/api/inventory/purchase-order/${id}/detail/ajax/`, deleteUrl: (id) => `/api/inventory/purchase-order/${id}/delete/ajax/` },
-    'production-plan-entry': { name: '生産計画', listUrl: '/api/production/production-plan/list/ajax/', createUrl: '/api/production/production-plan/create/ajax/', detailUrl: (id) => `/api/production/production-plan/${id}/detail/ajax/`, deleteUrl: (id) => `/api/production/production-plan/${id}/delete/ajax/` },
-    'parts-used-entry': { name: '使用部品', listUrl: '/api/production/parts-used/list/ajax/', createUrl: '/api/production/parts-used/create/ajax/', detailUrl: (id) => `/api/production/parts-used/${id}/detail/ajax/`, deleteUrl: (id) => `/api/production/parts-used/${id}/delete/ajax/` },
+    'inventory-purchase-entry': { name: '入庫予定', listUrl: '/api/inventory/purchase-orders/', createUrl: '/api/inventory/purchase-orders/', detailUrl: (id) => `/api/inventory/purchase-orders/${id}/`, deleteUrl: (id) => `/api/inventory/purchase-orders/${id}/` },
+    'production-plan-entry': { name: '生産計画', listUrl: '/api/production/plans/', createUrl: '/api/production/plans/', detailUrl: (id) => `/api/production/plans/${id}/`, deleteUrl: (id) => `/api/production/plans/${id}/` },
+    'parts-used-entry': { name: '使用部品', listUrl: '/api/production/parts-used/', createUrl: '/api/production/parts-used/', detailUrl: (id) => `/api/production/parts-used/${id}/`, deleteUrl: (id) => `/api/production/parts-used/${id}/` },
 };
 
 const MASTER_CARDS = ['item', 'supplier', 'warehouse'];
@@ -168,6 +168,25 @@ const DataImport = () => {
     const [formData, setFormData] = useState({});
     const [itemToDelete, setItemToDelete] = useState(null);
     const [csvResult, setCsvResult] = useState({ message: '', isError: false, errors: [] });
+
+    const fetchListData = useCallback(async (type) => {
+        if (!type) return;
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(DATA_CONFIG[type].listUrl, { credentials: 'include' });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const result = await response.json();
+            // Handle both paginated (results) and custom (data) API responses
+            const rows = result.results || result.data || [];
+            setListData({ ...getTableConfig(type), rows: rows });
+        } catch (e) {
+            setError(e.message);
+            setListData({ ...getTableConfig(type), rows: [] });
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
 
     // State for CSV Upload
     const [csvDataType, setCsvDataType] = useState('');
@@ -227,36 +246,30 @@ const DataImport = () => {
 
     useEffect(() => {
         if (!showListModal || !modalConfig.type) return;
-        const fetchListData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const response = await fetch(DATA_CONFIG[modalConfig.type].listUrl, { credentials: 'include' });
-                if (!response.ok) throw new Error('Network response was not ok');
-                const result = await response.json();
-                setListData({ ...getTableConfig(modalConfig.type), rows: result.data });
-            } catch (e) { setError(e.message); } finally { setIsLoading(false); }
-        };
-        fetchListData();
-    }, [showListModal, modalConfig]);
+        fetchListData(modalConfig.type);
+    }, [showListModal, modalConfig.type, fetchListData]);
 
     const handleFormSubmit = async () => {
         const { type, recordId } = modalConfig;
         const config = DATA_CONFIG[type];
-        const submitData = new FormData();
-        Object.keys(formData).forEach(key => submitData.append(key, formData[key]));
-        if (recordId) submitData.append('id', recordId);
+        const url = recordId ? config.detailUrl(recordId) : config.createUrl;
+        const method = recordId ? 'PUT' : 'POST';
 
         try {
-            const response = await fetch(config.createUrl, { method: 'POST', body: submitData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
+            const response = await fetch(url, {
+                method: method,
+                body: JSON.stringify(formData),
+                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
             const result = await response.json();
-            if (result.status === 'success') {
+            if (response.ok) {
                 alert(result.message || '保存しました。');
                 setShowRegisterModal(false);
-                if (showListModal) setModalConfig(prev => ({...prev})); // Refresh list
+                if (showListModal) fetchListData(type); // Refresh list
             } else {
-                const errorMessages = Object.entries(result.errors || {}).map(([field, errors]) => `${field}: ${errors.join(', ')}`).join('\n');
-                alert(`エラー:\n${result.message || ''}\n${errorMessages}`);
+                const errorMessages = Object.entries(result || {}).map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`).join('\n');
+                alert(`エラー:\n${result.message || result.detail || ''}\n${errorMessages}`);
             }
         } catch (e) { alert('保存中に通信エラーが発生しました。'); }
     };
@@ -265,14 +278,20 @@ const DataImport = () => {
         if (!itemToDelete) return;
         const { type, id } = itemToDelete;
         try {
-            const response = await fetch(DATA_CONFIG[type].deleteUrl(id), { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' }, credentials: 'include' });
-            const result = await response.json();
-            if (result.status === 'success') {
-                alert(result.message || '削除しました。');
+            const response = await fetch(DATA_CONFIG[type].deleteUrl(id), { method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
+            if (response.ok) {
+                // For DELETE, 204 No Content is a common success response with no body.
+                if (response.status !== 204) {
+                    const result = await response.json();
+                    alert(result.message || '削除しました。');
+                } else {
+                    alert('削除しました。');
+                }
                 setShowDeleteModal(false);
-                setListData(prev => ({ ...prev, rows: prev.rows.filter(row => row.id !== id) }));
+                setListData(prev => ({ ...prev, rows: prev.rows.filter(row => row[prev.idKey] !== id) }));
             } else {
-                alert(`エラー: ${result.message || '削除に失敗しました。'}`);
+                const result = await response.json();
+                alert(`エラー: ${result.message || result.detail || '削除に失敗しました。'}`);
             }
         } catch (e) { alert('削除処理中にエラーが発生しました。'); }
     };

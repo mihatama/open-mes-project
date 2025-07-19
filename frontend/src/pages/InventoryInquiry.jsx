@@ -47,7 +47,7 @@ const InventoryInquiry = () => {
       if (filters.warehouse) params.append('warehouse_query', filters.warehouse);
       if (filters.location) params.append('location_query', filters.location);
       params.append('hide_zero_stock_query', filters.hideZeroStock);
-      apiUrl = `/api/inventory/data/?${params.toString()}`;
+      apiUrl = `/api/inventory/inventories/?${params.toString()}`;
     }
 
     try {
@@ -147,13 +147,13 @@ const InventoryInquiry = () => {
     setModifyModal(prev => ({ ...prev, error: '', success: '' }));
     const csrftoken = getCookie('csrftoken');
     try {
-      const response = await fetch('/api/inventory/update/', {
-        method: 'POST',
+      // Use PATCH for partial updates. The warehouse should not be changed here.
+      // Changing the warehouse is a 'move' operation.
+      const response = await fetch(`/api/inventory/inventories/${modifyModal.item.id}/`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
-          inventory_id: modifyModal.item.id,
           quantity: modifyFormData.quantity,
-          warehouse: modifyFormData.warehouse.trim(),
           location: modifyFormData.location.trim(),
         }),
         credentials: 'include',
@@ -189,11 +189,10 @@ const InventoryInquiry = () => {
     }
     const csrftoken = getCookie('csrftoken');
     try {
-      const response = await fetch('/api/inventory/move/', {
+      const response = await fetch(`/api/inventory/inventories/${moveModal.item.id}/move/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
-          source_inventory_id: moveModal.item.id,
           quantity_to_move: quantityToMove,
           target_warehouse: moveFormData.target_warehouse.trim(),
           target_location: moveFormData.target_location.trim(),
@@ -294,8 +293,8 @@ const InventoryInquiry = () => {
                     <td><p className="mb-0">{modifyModal.item?.part_number}</p></td>
                   </tr>
                   <tr>
-                    <td><label htmlFor="modal_warehouse_input" className="mb-0">倉庫:</label></td>
-                    <td><input type="text" id="modal_warehouse_input" name="warehouse" value={modifyFormData.warehouse} onChange={handleModifyFormChange} className="form-control form-control-sm" /></td>
+                    <td><label className="mb-0">倉庫 (変更不可):</label></td>
+                    <td><p className="form-control-plaintext form-control-sm ps-2 mb-0">{modifyModal.item?.warehouse}</p></td>
                   </tr>
                   <tr>
                     <td><label htmlFor="modal_location_input" className="mb-0">場所:</label></td>

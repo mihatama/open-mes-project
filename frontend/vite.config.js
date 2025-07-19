@@ -6,8 +6,8 @@ export default defineConfig({
   server: {
     proxy: {
       // DjangoバックエンドへのAPIリクエストをプロキシする設定
-      // /api, /users だけでなく、/quality など他のアプリケーションへのリクエストも転送する
-      '^/(api|admin|quality|inventory|production|machine|master|mobile|users|__debug__|static)/.*': {
+      // /api で始まるリクエストのみをバックエンドに転送する
+      '^/api/.*': {
         target: 'http://backend:8000',
         changeOrigin: true,
       },

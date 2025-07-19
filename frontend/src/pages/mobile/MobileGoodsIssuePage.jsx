@@ -40,7 +40,7 @@ const MobileGoodsIssuePage = () => {
         if (status) params.append('search_status', status);
 
         try {
-            const response = await fetch(`/api/inventory/sales-orders/data/?${params.toString()}`);
+            const response = await fetch(`/api/inventory/sales-orders/?${params.toString()}`);
             if (!response.ok) {
                 throw new Error('データの読み込みに失敗しました。');
             }
@@ -107,7 +107,7 @@ const MobileGoodsIssuePage = () => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('/api/inventory/process-single-sales-order-issue/', {
+            const response = await fetch('/api/inventory/sales-orders/issue/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

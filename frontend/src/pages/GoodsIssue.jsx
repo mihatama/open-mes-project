@@ -17,7 +17,7 @@ const GoodsIssue = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/inventory/sales-orders/data/?search_status=pending');
+      const response = await fetch('/api/inventory/sales-orders/?search_status=pending');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -66,7 +66,7 @@ const GoodsIssue = () => {
     const csrfToken = getCookie('csrftoken');
 
     try {
-      const response = await fetch('/api/inventory/issue-single-order/', {
+      const response = await fetch('/api/inventory/sales-orders/issue/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

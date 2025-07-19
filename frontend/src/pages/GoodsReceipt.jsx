@@ -42,7 +42,7 @@ const GoodsReceipt = () => {
       if (filters.supplier) params.append('search_supplier', filters.supplier);
       if (filters.partNumber) params.append('search_part_number', filters.partNumber);
       if (filters.status) params.append('search_status', filters.status);
-      apiUrl = `/api/inventory/schedules/data/?${params.toString()}`;
+      apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
     }
 
     try {

@@ -50,7 +50,7 @@ const StockMovementHistory = () => {
     const fetchHistory = useCallback(async (page, params) => {
         setLoading(true);
         setError(null);
-        const url = new URL(`${window.location.origin}/api/inventory/stock-movements/data/`);
+        const url = new URL(`${window.location.origin}/api/inventory/stock-movements/`);
         url.searchParams.append('page', page);
         url.searchParams.append('page_size', pageSize);
 

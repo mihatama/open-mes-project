@@ -24,11 +24,11 @@ const MobileGoodsReceiptPage = () => {
 
     const params = new URLSearchParams();
     if (searchTerm) {
-      // This assumes the backend has a generic search filter that checks multiple fields (e.g., order_number, part_number).
-      params.append('search', searchTerm);
+      // Search by order number, part number, etc.
+      params.append('search_order_number', searchTerm);
     }
     params.append('search_status', 'pending'); // Mobile view is for pending receipts
-    const apiUrl = `/api/inventory/schedules/data/?${params.toString()}`;
+    const apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
 
     try {
       const response = await fetch(apiUrl);

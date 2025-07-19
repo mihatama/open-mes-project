@@ -213,6 +213,48 @@ class InventoryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(inventory_items, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], url_path='move')
+    def move(self, request, pk=None):
+        source_inventory = self.get_object()
+        
+        try:
+            quantity_to_move = int(request.data.get('quantity_to_move'))
+            target_warehouse = request.data.get('target_warehouse')
+            target_location = request.data.get('target_location', '') # location can be blank
+        except (TypeError, ValueError):
+            return Response({'success': False, 'error': '無効なリクエストデータです。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not target_warehouse:
+            return Response({'success': False, 'error': '移動先倉庫は必須です。'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if quantity_to_move <= 0:
+            return Response({'success': False, 'error': '移動数量は1以上である必要があります。'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if quantity_to_move > source_inventory.quantity:
+            return Response({'success': False, 'error': '移動数量が現在の在庫数を超えています。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                # 移動元から在庫を減らす
+                source_inventory.quantity -= quantity_to_move
+                source_inventory.save()
+
+                # 移動先に在庫を追加または作成
+                target_inventory, created = Inventory.objects.get_or_create(
+                    part_number=source_inventory.part_number,
+                    warehouse=target_warehouse,
+                    location=target_location,
+                    defaults={'quantity': quantity_to_move}
+                )
+                if not created:
+                    target_inventory.quantity += quantity_to_move
+                    target_inventory.save()
+
+            return Response({'success': True, 'message': '在庫を正常に移動しました。'})
+
+        except Exception as e:
+            return Response({'success': False, 'error': f'在庫移動中にエラーが発生しました: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=True, methods=['post'], url_path='adjust')
     def adjust(self, request, pk=None):
         # This combines logic from the old `update_inventory_api`
