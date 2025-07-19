@@ -15,9 +15,11 @@ const InspectionResultModal = ({ item, onClose, onSuccess }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/quality/api/inspection_item_form_data/${item.id}/`);
+      // APIエンドポイントをViewSetのカスタムアクションのパスに修正
+      const response = await fetch(`/api/quality/inspection-items/${item.id}/form-data/`);
       if (!response.ok) {
-        throw new Error(`サーバーエラー: ${response.status}`);
+        const errorText = await response.text(); // エラーレスポンスの本文を取得
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
       }
       const data = await response.json();
       if (!data.success) {
@@ -82,7 +84,8 @@ const InspectionResultModal = ({ item, onClose, onSuccess }) => {
 
     try {
       const csrfToken = getCookie('csrftoken');
-      const response = await fetch(`/quality/api/record_inspection_result/${item.id}/`, {
+      // APIエンドポイントをViewSetのカスタムアクションのパスに修正
+      const response = await fetch(`/api/quality/inspection-items/${item.id}/record-result/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': csrfToken },
         body: submissionData,

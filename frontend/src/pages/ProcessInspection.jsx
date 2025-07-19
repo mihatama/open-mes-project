@@ -12,22 +12,25 @@ const ProcessInspection = () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('/quality/process_inspection/');
+        // APIエンドポイントを修正し、検査項目マスターのリストを取得
+        const response = await fetch('/api/quality/inspection-items/');
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text(); // エラーレスポンスの本文を取得
+          throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
         }
 
         const data = await response.json();
 
-        if (data && data.inspection_items) {
-          setInspectionItems(data.inspection_items);
+        // APIのレスポンス形式に合わせてデータを処理し、工程内検査(in_process)で有効なもののみをフィルタリング
+        if (data && data.status === 'success' && Array.isArray(data.data)) {
+          const processInspectionItems = data.data.filter(item => item.inspection_type === 'in_process' && item.is_active);
+          setInspectionItems(processInspectionItems);
         } else {
-          setInspectionItems([]);
+          throw new Error(data.message || 'APIから無効なデータ形式が返されました。');
         }
       } catch (error) {
         console.error("Error fetching inspection items:", error);
-        setError(error.message || "Error loading inspection items.");
-        setInspectionItems([]);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
