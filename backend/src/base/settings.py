@@ -21,9 +21,9 @@ VERSION = '0.0.0'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
-# .env ファイルのパスを BASE_DIR (open_mes/scr/) から正しく指定します。
-# これにより、manage.py がどのディレクトリから実行されても .env ファイルを確実に見つけられます。
-dotenv_path = BASE_DIR / '.env'
+# .env ファイルのパスをプロジェクトルート (`/open-mes-project/.env`) に変更します。
+# これにより、コンテナ外で manage.py を実行する際も環境変数を読み込めます。
+dotenv_path = BASE_DIR.parent.parent / '.env'
 env.read_env(str(dotenv_path))
 
 # Quick-start development settings - unsuitable for production
