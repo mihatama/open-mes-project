@@ -1,10 +1,9 @@
 *.log
 *.pyc
 __pycache__/
-/postgres/data/
-/postgres/init/
+/db/data/
+/db/init/
 .env
-migrations/
 /venv/
 /script/data/
 *.ini

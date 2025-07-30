@@ -1,0 +1,41 @@
+.mobile-goods-receipt-page {
+  padding: 1rem;
+  padding-bottom: 60px; /* To avoid content being hidden by bottom nav bar */
+}
+
+.mobile-goods-receipt-page .page-title {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+/* Modal-like form for receipt processing */
+.mobile-receipt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050; /* Above other content */
+  padding: 1rem;
+}
+
+.mobile-receipt-modal-content {
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.list-group-item h5 {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
