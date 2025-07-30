@@ -27,6 +27,8 @@ urlpatterns = [
 
     # API URLs per app (alphabetical order)
     path('api/base/', include('base.api_urls', namespace='base_api')),
+    # フロントエンドの実装に合わせて /api/v1/cars/ を追加
+    path('api/v1/cars/', include('cars.api_urls', namespace='cars_api')),
     path('api/inventory/', include('inventory.api_urls', namespace='inventory_api')),
     path('api/machine/', include('machine.api_urls', namespace='machine_api')),
     path('api/master/', include('master.api_urls', namespace='master_api')),
