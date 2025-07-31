@@ -26,6 +26,7 @@ import MachineMasterCreation from './pages/MachineMasterCreation.jsx';
 import DataImport from './pages/DataImport.jsx';
 import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
+import SystemSettings from './pages/SystemSettings.jsx';
 import MobileLayout from './layouts/MobileLayout.jsx';
 import MobileTopPage from './pages/MobileTopPage.jsx';
 import MobileGoodsReceiptPage from './pages/mobile/MobileGoodsReceiptPage.jsx';
@@ -187,6 +188,7 @@ function AppContent() {
           <Route path="/data/import" element={<DataImport />} />
           <Route path="/user/settings" element={<UserSettings />} />
           <Route path="/user/management" element={<StaffRoute><UserManagement /></StaffRoute>} />
+          <Route path="/system/settings" element={<StaffRoute><SystemSettings /></StaffRoute>} />
         </Route>
 
         {/* Mobile Protected Routes */}

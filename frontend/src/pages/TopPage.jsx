@@ -50,15 +50,22 @@ const TopPage = ({ isAuthenticated, isStaffOrSuperuser, onLogout }) => {
         </ul>
       </div>
 
+      {isStaffOrSuperuser && (
+        <div className="menu-section">
+          <h3>管理者メニュー</h3>
+          <ul>
+            <li><Link to="/user/management">ユーザー管理</Link></li>
+            <li><Link to="/system/settings">システム設定</Link></li>
+          </ul>
+        </div>
+      )}
+
       <div className="menu-section">
         <h3>アカウント</h3>
         <ul>
           {isAuthenticated ? (
             <>
               <li><Link to="/user/settings">ユーザー設定</Link></li>
-              {isStaffOrSuperuser && (
-                <li><Link to="/user/management">ユーザー管理</Link></li>
-              )}
               <li>
                 <button type="button" onClick={onLogout} className="link-button">ログアウト</button>
               </li>

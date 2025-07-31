@@ -37,11 +37,16 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick, onL
       <div className="menu-category-title">データメンテナンス</div>
       <Link to="/data/import" className="menu-subcategory-link" onClick={onLinkClick}>データ投入</Link>
 
+      {isStaffOrSuperuser && (
+        <>
+          <div className="menu-category-title">管理者メニュー</div>
+          <Link to="/user/management" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー管理</Link>
+          <Link to="/system/settings" className="menu-subcategory-link" onClick={onLinkClick}>システム設定</Link>
+        </>
+      )}
+
       <div className="menu-category-title">アカウント設定</div>
       <Link to="/user/settings" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー設定</Link>
-      {isStaffOrSuperuser && (
-        <Link to="/user/management" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー管理</Link>
-      )}
       <a
         href="#"
         onClick={(e) => { e.preventDefault(); onLinkClick(); onVersionClick(); }}
