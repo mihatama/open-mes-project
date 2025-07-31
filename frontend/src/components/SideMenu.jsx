@@ -42,6 +42,7 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick, onL
           <div className="menu-category-title">管理者メニュー</div>
           <Link to="/user/management" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー管理</Link>
           <Link to="/system/settings" className="menu-subcategory-link" onClick={onLinkClick}>システム設定</Link>
+          <Link to="/system/csv-mappings" className="menu-subcategory-link" onClick={onLinkClick}>CSVマッピング設定</Link>
         </>
       )}
 
