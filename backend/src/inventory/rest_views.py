@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination # PageNumberPagination は StandardResultsSetPagination で使用
 from rest_framework.views import APIView
-from .serializers import (PurchaseOrderSerializer, InventorySerializer, StockMovementSerializer, SalesOrderSerializer, AllocateInventoryForSalesOrderRequestSerializer)
-from .models import PurchaseOrder, Inventory, StockMovement, SalesOrder # SalesOrderモデルをインポート
+from .serializers import (PurchaseOrderSerializer, InventorySerializer, StockMovementSerializer, SalesOrderSerializer, AllocateInventoryForSalesOrderRequestSerializer, ReceiptSerializer)
+from .models import PurchaseOrder, Inventory, StockMovement, SalesOrder, Receipt # SalesOrder, Receiptモデルをインポート
 from django.http import JsonResponse # JsonResponse をインポート
 from django.db import transaction, IntegrityError # トランザクションのためにインポート # Qオブジェクトをインポートして複雑なクエリを構築
 from django.db.models import Q, F # Fオブジェクトをインポート
@@ -159,6 +159,15 @@ class PurchaseOrderImportCSVView(APIView):
 
 
 # --- ViewSets ---
+
+class ReceiptViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows receipts to be viewed or edited.
+    """
+    queryset = Receipt.objects.all().select_related('purchase_order', 'operator').order_by('-received_date')
+    serializer_class = ReceiptSerializer
+    pagination_class = StandardResultsSetPagination
+    permission_classes = [IsAuthenticated]
 
 class InventoryViewSet(viewsets.ModelViewSet):
     """

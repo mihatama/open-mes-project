@@ -1,9 +1,23 @@
 from rest_framework import serializers
-from .models import PurchaseOrder, Inventory, StockMovement, SalesOrder # StockMovement, SalesOrderモデルをインポート
+from .models import PurchaseOrder, Inventory, StockMovement, SalesOrder, Receipt # StockMovement, SalesOrder, Receiptモデルをインポート
 # master.modelsのインポートは、将来的に関連モデルとして扱うための準備か、
 # あるいはビューなどで型ヒント等に利用されている可能性があります。
 # 現状このシリアライザー内では直接参照されていません。
 from master.models import Item, Supplier, Warehouse # masterアプリケーションからモデルをインポート
+
+class ReceiptSerializer(serializers.ModelSerializer):
+    """
+    入庫実績モデルのためのシリアライザ。
+    """
+    operator_username = serializers.CharField(source='operator.username', read_only=True, allow_null=True)
+
+    class Meta:
+        model = Receipt
+        fields = [
+            'id', 'purchase_order', 'received_quantity', 'received_date',
+            'warehouse', 'location', 'operator', 'operator_username', 'remarks'
+        ]
+        read_only_fields = ['id', 'operator_username']
 
 class PurchaseOrderSerializer(serializers.ModelSerializer):
     """
@@ -17,6 +31,8 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     item = serializers.CharField(max_length=255, allow_null=True, required=False)
     warehouse = serializers.CharField(max_length=255, allow_null=True, required=False)
     location = serializers.CharField(max_length=255, allow_null=True, required=False, help_text="入庫棚番 (文字列、省略可能)")
+    received_quantity = serializers.IntegerField(read_only=True)
+    remaining_quantity = serializers.IntegerField(read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -52,14 +68,15 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'remarks3',             # 備考3 (任意)
             'remarks4',             # 備考4 (任意)
             'remarks5',             # 備考5 (任意)
-            'received_quantity',    # 入庫済数量 (デフォルト0、読み取り専用)
+            'received_quantity',    # 入庫済数量 (プロパティ、読み取り専用)
+            'remaining_quantity',   # 未入庫数量 (プロパティ、読み取り専用)
             'order_date',           # 発注日 (自動設定、読み取り専用)
             'expected_arrival',     # 入荷予定日 (任意)
             'warehouse',            # 入庫倉庫
             'location',             # 入庫棚番 (任意)
             'status'                # ステータス (デフォルト'pending'、読み取り専用)
         ]
-        read_only_fields = ['id', 'received_quantity', 'order_date', 'status'] # is_first_time はデフォルト値があるので読み取り専用には含めません
+        read_only_fields = ['id', 'order_date', 'status', 'received_quantity', 'remaining_quantity'] # is_first_time はデフォルト値があるので読み取り専用には含めません
 
     def validate_order_number(self, value):
         """

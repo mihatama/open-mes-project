@@ -1,5 +1,6 @@
 from django.db import models
 # from master.models import Item, Supplier, Warehouse
+from django.db.models import Sum
 from django.utils import timezone
 from django.conf import settings
 import uuid
@@ -84,19 +85,59 @@ class PurchaseOrder(models.Model):
     remarks3 = models.TextField(blank=True, null=True, verbose_name="備考3")
     remarks4 = models.TextField(blank=True, null=True, verbose_name="備考4")
     remarks5 = models.TextField(blank=True, null=True, verbose_name="備考5")
-    received_quantity = models.PositiveIntegerField(default=0) # 実際に入庫した数量を保持
     order_date = models.DateTimeField(auto_now_add=True)  # 発注日
     expected_arrival = models.DateTimeField(blank=True, null=True)  # 到着予定日
     warehouse = models.CharField(max_length=255, blank=True, null=True, verbose_name="入庫倉庫") # どの倉庫に入庫するかを追加
     location = models.CharField(max_length=255, blank=True, null=True, verbose_name="入庫棚番") # どの棚番に入庫するかを追加
     status = models.CharField(max_length=20, choices=[
         ('pending', '未入庫'),
-        ('received', '入庫済み'),
+        ('partially_received', '一部入庫'),
+        ('fully_received', '全量入庫済み'),
         ('canceled', 'キャンセル')
     ], default='pending')
     def __str__(self):
         item_display = self.item if self.item else "N/A"
         return f"PO {self.order_number} - {item_display} ({self.status})"
+
+    @property
+    def received_quantity(self):
+        """関連する入庫実績の合計数量を計算して返す"""
+        total = self.receipts.aggregate(total=Sum('received_quantity'))['total']
+        return total or 0
+
+    @property
+    def remaining_quantity(self):
+        """残りの未入庫数量を計算して返す"""
+        return self.quantity - self.received_quantity
+
+# 入庫実績
+class Receipt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid7, editable=False)
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        related_name='receipts',
+        verbose_name="入庫予定"
+    )
+    received_quantity = models.PositiveIntegerField(verbose_name="入庫数量")
+    received_date = models.DateTimeField(default=timezone.now, verbose_name="入庫日")
+    warehouse = models.CharField(max_length=255, verbose_name="入庫倉庫")
+    location = models.CharField(max_length=255, blank=True, null=True, verbose_name="入庫棚番")
+    operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name="作業者"
+    )
+    remarks = models.TextField(blank=True, null=True, verbose_name="備考")
+
+    def __str__(self):
+        return f"Receipt for {self.purchase_order.order_number} - Qty: {self.received_quantity}"
+
+    class Meta:
+        verbose_name = "入庫実績"
+        verbose_name_plural = "入庫実績"
+        ordering = ['-received_date']
 
 # 出庫予定
 class SalesOrder(models.Model):
