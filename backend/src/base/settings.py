@@ -73,19 +73,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     # Third-party apps
     'corsheaders',
     'django_vite',
-    'users.apps.UsersConfig',
+    'debug_toolbar',
+    'rest_framework',
+    'rest_framework.authtoken',
     'django_static_md5url',
+
+    # Project apps
+    'base.apps.BaseConfig',
+    'users.apps.UsersConfig',
     'production.apps.ProductionConfig',
     'inventory.apps.InventoryConfig',
     'machine.apps.MachineConfig',
     'quality.apps.QualityConfig',
     'master.apps.MasterConfig',
-    'debug_toolbar',
-    'rest_framework',
-    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -182,7 +186,7 @@ STATICFILES_DIRS = [
 # Vite (django-vite) と WhiteNoise の設定
 # ------------------------------------------------------------------------------
 # Viteのビルド成果物が出力されるパス (例: /backend/frontend/dist)
-DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent / "frontend" / "dist"
+DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent.parent / "frontend" / "dist"
 DJANGO_VITE_DEV_MODE = DEBUG
 
 # Viteのビルドディレクトリを静的ファイルの探索対象に追加
