@@ -11,6 +11,7 @@ const SystemSettings = () => {
         <Card.Header as="h5">設定項目</Card.Header>
         <ListGroup variant="flush">
           <ListGroup.Item action as={Link} to="/system/csv-mappings">CSVマッピング設定</ListGroup.Item>
+          <ListGroup.Item action as={Link} to="/system/model-display-settings">モデル項目表示設定</ListGroup.Item>
         </ListGroup>
       </Card>
     </div>

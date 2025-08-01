@@ -25,12 +25,11 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     作成時には、仕入先名、品目名/コード、倉庫名を文字列として受け付けます。
     応答時には、読み取り専用フィールドを含む完全なオブジェクトを返します。
     """
-    # モデルのフィールド定義に合わせて CharField としています。
-    # supplier, item, warehouse は現状、masterアプリのモデルとは直接リンクされていません。
-    supplier = serializers.CharField(max_length=255, allow_null=True, required=False)
-    item = serializers.CharField(max_length=255, allow_null=True, required=False)
-    warehouse = serializers.CharField(max_length=255, allow_null=True, required=False)
-    location = serializers.CharField(max_length=255, allow_null=True, required=False, help_text="入庫棚番 (文字列、省略可能)")
+    # モデルの変更に伴い、シリアライザのフィールド定義も柔軟性を持たせる
+    supplier = serializers.CharField(max_length=255, allow_null=True, required=False, allow_blank=True)
+    item = serializers.CharField(max_length=255, allow_null=True, required=False, allow_blank=True)
+    warehouse = serializers.CharField(max_length=255, allow_null=True, required=False, allow_blank=True)
+    location = serializers.CharField(max_length=255, allow_null=True, required=False, allow_blank=True, help_text="入庫棚番 (文字列、省略可能)")
     received_quantity = serializers.IntegerField(read_only=True)
     remaining_quantity = serializers.IntegerField(read_only=True)
 
@@ -76,18 +75,23 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'location',             # 入庫棚番 (任意)
             'status'                # ステータス (デフォルト'pending'、読み取り専用)
         ]
-        read_only_fields = ['id', 'order_date', 'status', 'received_quantity', 'remaining_quantity'] # is_first_time はデフォルト値があるので読み取り専用には含めません
+        read_only_fields = ['id', 'order_date', 'received_quantity', 'remaining_quantity'] # is_first_time はデフォルト値があるので読み取り専用には含めません
 
     def validate_order_number(self, value):
         """
-        Validate that the order_number is unique.
+        Validate that the order_number is unique if it is provided.
         """
+        # Allow null or blank values
+        if not value:
+            return value
+
         # If updating an instance, exclude its own pk from the uniqueness check
         instance = self.instance
+        query = PurchaseOrder.objects.filter(order_number=value)
         if instance and instance.pk:
-            if PurchaseOrder.objects.filter(order_number=value).exclude(pk=instance.pk).exists():
-                raise serializers.ValidationError("この発注番号は他のレコードで既に使用されています。")
-        elif PurchaseOrder.objects.filter(order_number=value).exists():
+            query = query.exclude(pk=instance.pk)
+        
+        if query.exists():
             raise serializers.ValidationError("この発注番号は既に使用されています。")
         return value
 class InventorySerializer(serializers.ModelSerializer):

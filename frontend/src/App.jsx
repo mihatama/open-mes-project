@@ -28,6 +28,7 @@ import UserSettings from './pages/UserSettings.jsx';
 import UserManagement from './pages/UserManagement.jsx';
 import SystemSettings from './pages/SystemSettings.jsx';
 import CsvMappingSettings from './pages/CsvMappingSettings.jsx';
+import ModelDisplaySettings from './pages/ModelDisplaySettings.jsx';
 import MobileLayout from './layouts/MobileLayout.jsx';
 import MobileTopPage from './pages/MobileTopPage.jsx';
 import MobileGoodsReceiptPage from './pages/mobile/MobileGoodsReceiptPage.jsx';
@@ -191,6 +192,7 @@ function AppContent() {
           <Route path="/user/management" element={<StaffRoute><UserManagement /></StaffRoute>} />
           <Route path="/system/settings" element={<StaffRoute><SystemSettings /></StaffRoute>} />
           <Route path="/system/csv-mappings" element={<StaffRoute><CsvMappingSettings /></StaffRoute>} />
+          <Route path="/system/model-display-settings" element={<StaffRoute><ModelDisplaySettings /></StaffRoute>} />
         </Route>
 
         {/* Mobile Protected Routes */}
