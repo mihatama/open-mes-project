@@ -19,6 +19,7 @@ class CsvColumnMappingSerializer(serializers.ModelSerializer):
             'is_active',
         ]
         read_only_fields = ['data_type_display']
+        validators = [] # bulk-save時にUniqueTogetherValidatorを無効化するため
 
 
 class ModelDisplaySettingSerializer(serializers.ModelSerializer):
@@ -33,3 +34,4 @@ class ModelDisplaySettingSerializer(serializers.ModelSerializer):
             'display_name',
             'display_order',
         ]
+        validators = [] # bulk-save時にUniqueTogetherValidatorを無効化するため

@@ -48,7 +48,6 @@ const ModelDisplaySettings = () => {
                     verbose_name: field.verbose_name,
                     display_name: existingSetting?.display_name || '',
                     help_text: field.help_text,
-                    // Display settings (editable)
                     display_order: existingSetting?.display_order ?? (index + 1) * 10, // Use ?? to allow order 0
                 };
             });
@@ -74,7 +73,7 @@ const ModelDisplaySettings = () => {
         const newFieldsData = [...fieldsData];
         newFieldsData[index] = {
             ...newFieldsData[index],
-            [name]: type === 'checkbox' || type === 'switch' ? checked : value
+            [name]: type === 'checkbox' ? checked : value // 'switch' type is no longer used in this component
         };
         setFieldsData(newFieldsData);
     };

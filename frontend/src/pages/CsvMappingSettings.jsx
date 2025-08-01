@@ -24,21 +24,25 @@ const CsvMappingSettings = () => {
         setError(null);
         setSaveStatus(prev => ({ ...prev, show: false }));
         try {
-            const [mappingsRes, fieldsRes] = await Promise.all([
+            const [mappingsRes, fieldsRes, displaySettingsRes] = await Promise.all([
                 fetch(`/api/base/csv-mappings/?data_type=${dataType}`),
-                fetch(`/api/base/model-fields/?data_type=${dataType}`)
+                fetch(`/api/base/model-fields/?data_type=${dataType}`),
+                fetch(`/api/base/model-display-settings/?data_type=${dataType}`)
             ]);
 
             if (!mappingsRes.ok) throw new Error(`既存マッピングの取得に失敗しました: ${mappingsRes.statusText}`);
             if (!fieldsRes.ok) throw new Error(`モデル情報の取得に失敗しました: ${fieldsRes.statusText}`);
+            if (!displaySettingsRes.ok) throw new Error(`表示設定の取得に失敗しました: ${displaySettingsRes.statusText}`);
 
             const mappings = await mappingsRes.json();
             const modelFields = await fieldsRes.json();
+            const displaySettings = await displaySettingsRes.json();
 
             const data = modelFields
                 .filter(field => field.name !== 'id') // 'id'フィールドはマッピング対象外とする
                 .map((field, index) => {
                 const existingMapping = mappings.find(m => m.model_field_name === field.name);
+                const displaySetting = displaySettings.find(s => s.model_field_name === field.name);
                 const isActive = !!existingMapping;
 
                 return {
@@ -50,7 +54,7 @@ const CsvMappingSettings = () => {
                     help_text: field.help_text,
                     // Mapping info (editable)
                     csv_header: existingMapping?.csv_header || '',
-                    custom_display_name: existingMapping?.custom_display_name || '',
+                    custom_display_name: displaySetting?.display_name || '', // モデル表示設定のカスタム名を取得
                     order: existingMapping?.order || (index + 1) * 10,
                     is_update_key: existingMapping ? existingMapping.is_update_key : false,
                     is_active: isActive,
