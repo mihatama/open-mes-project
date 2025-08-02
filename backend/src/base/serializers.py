@@ -33,5 +33,8 @@ class ModelDisplaySettingSerializer(serializers.ModelSerializer):
             'model_field_name',
             'display_name',
             'display_order',
+            'is_list_display',
+            'is_search_field',
+            'is_list_filter',
         ]
         validators = [] # bulk-save時にUniqueTogetherValidatorを無効化するため

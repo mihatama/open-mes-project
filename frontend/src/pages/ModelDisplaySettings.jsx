@@ -49,6 +49,9 @@ const ModelDisplaySettings = () => {
                     display_name: existingSetting?.display_name || '',
                     help_text: field.help_text,
                     display_order: existingSetting?.display_order ?? (index + 1) * 10, // Use ?? to allow order 0
+                    is_list_display: existingSetting?.is_list_display ?? true,
+                    is_search_field: existingSetting?.is_search_field ?? false,
+                    is_list_filter: existingSetting?.is_list_filter ?? false,
                 };
             });
 
@@ -73,7 +76,7 @@ const ModelDisplaySettings = () => {
         const newFieldsData = [...fieldsData];
         newFieldsData[index] = {
             ...newFieldsData[index],
-            [name]: type === 'checkbox' ? checked : value // 'switch' type is no longer used in this component
+            [name]: type === 'checkbox' ? checked : value
         };
         setFieldsData(newFieldsData);
     };
@@ -86,6 +89,9 @@ const ModelDisplaySettings = () => {
             model_field_name: item.model_field_name,
             display_name: item.display_name,
             display_order: Number(item.display_order) || 0,
+            is_list_display: item.is_list_display,
+            is_search_field: item.is_search_field,
+            is_list_filter: item.is_list_filter,
         }));
 
         try {
@@ -131,7 +137,7 @@ const ModelDisplaySettings = () => {
     return (
         <Container fluid className="mt-4">
             <h2>モデル項目表示設定</h2>
-            <p>各データ種別の一覧画面に表示する項目やその順序、幅をカスタマイズします。</p>
+            <p>各データ種別の一覧画面で表示する項目、順序、検索やフィルタの対象をカスタマイズします。</p>
 
             <Row className="my-3 p-3 bg-light border rounded align-items-center">
                 <Col md={4}>
@@ -163,6 +169,9 @@ const ModelDisplaySettings = () => {
                                 <th style={{ width: '60px' }}>順序</th>
                                 <th style={{ minWidth: '180px' }}>モデル項目</th>
                                 <th style={{ minWidth: '180px' }}>カスタム表示名</th>
+                                <th style={{ minWidth: '100px' }}>一覧表示</th>
+                                <th style={{ minWidth: '100px' }}>検索対象</th>
+                                <th style={{ minWidth: '100px' }}>フィルタ対象</th>
                             </tr>
                         </thead>
                         <Droppable droppableId="model-display-droppable">
@@ -187,6 +196,15 @@ const ModelDisplaySettings = () => {
                                                     </td>
                                                     <td className="align-middle">
                                                         <Form.Control type="text" name="display_name" value={item.display_name || ''} onChange={(e) => handleInputChange(index, e)} placeholder={item.verbose_name} />
+                                                    </td>
+                                                    <td className="text-center align-middle">
+                                                        <Form.Check type="switch" id={`is_list_display-${index}`} name="is_list_display" checked={item.is_list_display} onChange={(e) => handleInputChange(index, e)} />
+                                                    </td>
+                                                    <td className="text-center align-middle">
+                                                        <Form.Check type="switch" id={`is_search_field-${index}`} name="is_search_field" checked={item.is_search_field} onChange={(e) => handleInputChange(index, e)} />
+                                                    </td>
+                                                    <td className="text-center align-middle">
+                                                        <Form.Check type="switch" id={`is_list_filter-${index}`} name="is_list_filter" checked={item.is_list_filter} onChange={(e) => handleInputChange(index, e)} />
                                                     </td>
                                                 </tr>
                                             )}

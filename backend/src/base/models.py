@@ -5,12 +5,16 @@ from django.utils.translation import gettext_lazy as _
 
 # 共通のデータ種別選択肢
 DATA_TYPE_CHOICES = [
-    ('item', '品番マスター'),
-    ('supplier', 'サプライヤーマスター'),
-    ('warehouse', '倉庫マスター'),
-    ('purchase_order', '入庫予定'),
-    ('production_plan', '生産計画'),
-    ('parts_used', '使用部品'),
+    ('item', _('品番マスター')),
+    ('supplier', _('サプライヤーマスター')),
+    ('warehouse', _('倉庫マスター')),
+    ('purchase_order', _('入庫予定')),
+    ('goods_receipt', _('入庫実績')),
+    ('production_plan', _('生産計画')),
+    ('parts_used', _('使用部品')),
+    ('base_setting', _('基本設定')),
+    ('csv_column_mapping', _('CSV列マッピング')),
+    ('model_display_setting', _('モデル項目表示設定')),
 ]
 
 
@@ -101,8 +105,8 @@ class CsvColumnMapping(models.Model):
 
 class ModelDisplaySetting(models.Model):
     """
-    各モデルの一覧画面での項目表示を管理します。
-    表示名や順序を設定できます。
+    各モデルの管理画面での項目表示を管理します。
+    表示項目、順序、検索・フィルタ設定ができます。
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     data_type = models.CharField(
@@ -126,6 +130,21 @@ class ModelDisplaySetting(models.Model):
         _("表示順"),
         default=10,
         help_text=_("一覧画面での表示順を制御します。小さい順に表示されます。")
+    )
+    is_list_display = models.BooleanField(
+        _("一覧表示"),
+        default=True,
+        help_text=_("この項目を一覧画面に表示するかどうかを示します。")
+    )
+    is_search_field = models.BooleanField(
+        _("検索対象"),
+        default=False,
+        help_text=_("この項目を管理画面の検索ボックスの対象にするかを示します。")
+    )
+    is_list_filter = models.BooleanField(
+        _("フィルタ対象"),
+        default=False,
+        help_text=_("この項目を管理画面のフィルタサイドバーに表示するかを示します。")
     )
     created_at = models.DateTimeField(_("作成日時"), auto_now_add=True)
     updated_at = models.DateTimeField(_("更新日時"), auto_now=True)

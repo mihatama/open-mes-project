@@ -20,8 +20,12 @@ DATA_TYPE_MODEL_MAPPING = {
     'supplier': 'master.Supplier',
     'warehouse': 'master.Warehouse',
     'purchase_order': 'inventory.PurchaseOrder',
+    'goods_receipt': 'inventory.Receipt',
     'production_plan': 'production.ProductionPlan',
     'parts_used': 'production.PartsUsed',
+    'base_setting': 'base.BaseSetting',
+    'csv_column_mapping': 'base.CsvColumnMapping',
+    'model_display_setting': 'base.ModelDisplaySetting',
 }
 
 class AppInfoView(APIView):
