@@ -17,6 +17,19 @@ DATA_TYPE_CHOICES = [
     ('model_display_setting', _('モデル項目表示設定')),
 ]
 
+# APIなどでモデル文字列とモデルクラスをマッピングするために使用
+DATA_TYPE_MODEL_MAPPING = {
+    'item': 'master.Item',
+    'supplier': 'master.Supplier',
+    'warehouse': 'master.Warehouse',
+    'purchase_order': 'inventory.PurchaseOrder',
+    'goods_receipt': 'inventory.Receipt',
+    'production_plan': 'production.ProductionPlan',
+    'parts_used': 'production.PartsUsed',
+    'base_setting': 'base.BaseSetting',
+    'csv_column_mapping': 'base.CsvColumnMapping',
+    'model_display_setting': 'base.ModelDisplaySetting',
+}
 
 class BaseSetting(models.Model):
     """

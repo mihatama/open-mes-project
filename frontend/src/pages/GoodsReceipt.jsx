@@ -15,6 +15,7 @@ const GoodsReceipt = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [displaySettings, setDisplaySettings] = useState([]); // For dynamic columns
 
   // State for search filters
   const [filters, setFilters] = useState({
@@ -28,29 +29,49 @@ const GoodsReceipt = () => {
   const [receiptModal, setReceiptModal] = useState({ isOpen: false, order: null, error: '', success: '' });
   const [receiptFormData, setReceiptFormData] = useState({ received_quantity: '', location: '', warehouse: '' });
 
-  // API call to fetch purchase order data
+  // API call to fetch purchase order data and display settings
   const fetchPurchaseOrders = useCallback(async (pageUrl = null) => {
     setIsLoading(true);
     setError(null);
 
-    let apiUrl;
+    let dataApiUrl;
     if (pageUrl) {
-      apiUrl = pageUrl;
+      dataApiUrl = pageUrl;
     } else {
       const params = new URLSearchParams();
       if (filters.orderNumber) params.append('search_order_number', filters.orderNumber);
       if (filters.supplier) params.append('search_supplier', filters.supplier);
       if (filters.partNumber) params.append('search_part_number', filters.partNumber);
       if (filters.status) params.append('search_status', filters.status);
-      apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
+      dataApiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
     }
+    
+    // The "Page Display Settings" for "Goods Receipt" saves settings for both purchase_order and goods_receipt.
+    // We fetch settings for 'purchase_order' as the primary data source for this page's table.
+    const settingsUrl = '/api/base/model-display-settings/?data_type=purchase_order';
 
     try {
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error(`Network response was not ok: ${response.statusText}`);
+      const [settingsResponse, dataResponse] = await Promise.all([
+        fetch(settingsUrl),
+        fetch(dataApiUrl)
+      ]);
+
+      if (settingsResponse.ok) {
+        const settings = await settingsResponse.json();
+        const visibleColumns = settings
+          .filter(s => s.is_list_display)
+          .sort((a, b) => a.display_order - b.display_order);
+        setDisplaySettings(visibleColumns);
+      } else {
+        console.error('表示設定の取得に失敗しました。');
+        // Fallback to empty, which will render default columns
+        setDisplaySettings([]);
       }
-      const data = await response.json();
+
+      if (!dataResponse.ok) {
+        throw new Error(`Network response was not ok: ${dataResponse.statusText}`);
+      }
+      const data = await dataResponse.json();
       setPurchaseOrders(data.results);
       setPagination({
         count: data.count,
@@ -60,8 +81,8 @@ const GoodsReceipt = () => {
         totalPages: data.total_pages,
       });
     } catch (err) {
-      setError('入庫予定データの取得中にエラーが発生しました。');
-      console.error('Error fetching purchase order data:', err);
+      setError('データの取得中にエラーが発生しました。');
+      console.error('Error fetching data:', err);
     } finally {
       setIsLoading(false);
     }
@@ -157,34 +178,94 @@ const GoodsReceipt = () => {
     return date.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
 
+  // Render logic for table headers
+  const renderTableHeaders = () => {
+    const defaultHeaders = (
+      <tr>
+        <th>発注番号</th>
+        <th>仕入先</th>
+        <th>品目</th>
+        <th>品名</th>
+        <th className="text-end">発注数量</th>
+        <th className="text-end">入庫済数量</th>
+        <th className="text-end">残数量</th>
+        <th>入荷予定日</th>
+        <th>ステータス</th>
+        <th className="text-center">操作</th>
+      </tr>
+    );
+
+    if (isLoading || displaySettings.length === 0) {
+      return defaultHeaders;
+    }
+
+    return (
+      <tr>
+        {displaySettings.map(setting => {
+          const isNumeric = ['quantity', 'received_quantity', 'remaining_quantity'].includes(setting.model_field_name);
+          // カスタム表示名がスペースのみの場合も考慮してtrim()し、
+          // verbose_nameがなければmodel_field_nameをフォールバックとして使用
+          const headerText = (setting.display_name || '').trim() || setting.verbose_name || setting.model_field_name;
+          return (
+            <th key={setting.model_field_name} className={isNumeric ? 'text-end' : ''}>
+              {headerText}
+            </th>
+          );
+        })}
+        <th className="text-center">操作</th>
+      </tr>
+    );
+  };
+
   // Render logic for table body
   const renderTableBody = () => {
     if (isLoading) return <tr><td colSpan="10" className="text-center">検索中...</td></tr>;
     if (error) return <tr><td colSpan="10" className="text-center text-danger">{error}</td></tr>;
     if (purchaseOrders.length === 0) return <tr><td colSpan="10" className="text-center">該当する入庫予定がありません。</td></tr>;
 
-    return purchaseOrders.map(order => (
-      <tr key={order.id}>
-        <td>{order.order_number}</td>
-        <td>{order.supplier || 'N/A'}</td>
-        <td>{order.item || 'N/A'}</td>
-        <td>{order.product_name || 'N/A'}</td>
-        <td className="text-end">{order.quantity}</td>
-        <td className="text-end">{order.received_quantity}</td>
-        <td className="text-end">{order.quantity - order.received_quantity}</td>
-        <td>{formatDate(order.expected_arrival)}</td>
-        <td>{order.status === 'pending' ? '未入庫' : order.status === 'received' ? '入庫済み' : 'キャンセル'}</td>
-        <td className="text-center">
-          <button 
-            className="btn btn-sm btn-primary" 
-            onClick={() => openReceiptModal(order)}
-            disabled={order.status !== 'pending' || (order.quantity - order.received_quantity <= 0)}
-          >
-            入庫
-          </button>
-        </td>
-      </tr>
-    ));
+    return purchaseOrders.map(order => {
+      const cells = displaySettings.map(setting => {
+        const fieldName = setting.model_field_name;
+        let cellValue;
+
+        // Handle special cases and formatting
+        if (fieldName === 'remaining_quantity') {
+          cellValue = order.quantity - order.received_quantity;
+        } else if (fieldName === 'expected_arrival' || fieldName === 'order_date') {
+          cellValue = formatDate(order[fieldName]);
+        } else if (fieldName === 'status') {
+          const statusMap = {
+            pending: '未入庫',
+            partially_received: '一部入庫',
+            fully_received: '全量入庫済み',
+            canceled: 'キャンセル',
+          };
+          cellValue = statusMap[order.status] || order.status;
+        } else {
+          cellValue = order[fieldName];
+        }
+
+        const isNumeric = ['quantity', 'received_quantity', 'remaining_quantity'].includes(fieldName);
+        const className = isNumeric ? 'text-end' : '';
+
+        return <td key={fieldName} className={className}>{cellValue ?? 'N/A'}</td>;
+      });
+
+      return (
+        <tr key={order.id}>
+          {cells}
+          <td className="text-center">
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => openReceiptModal(order)}
+              disabled={order.status !== 'pending' || (order.quantity - order.received_quantity <= 0)}
+            >
+              入庫
+            </button>
+          </td>
+        </tr>
+      );
+    });
   };
 
   return (
@@ -209,18 +290,7 @@ const GoodsReceipt = () => {
       <div className="table-responsive">
         <table className="table table-striped table-bordered table-hover mb-0">
           <thead>
-            <tr>
-              <th>発注番号</th>
-              <th>仕入先</th>
-              <th>品目</th>
-              <th>品名</th>
-              <th className="text-end">発注数量</th>
-              <th className="text-end">入庫済数量</th>
-              <th className="text-end">残数量</th>
-              <th>入荷予定日</th>
-              <th>ステータス</th>
-              <th className="text-center">操作</th>
-            </tr>
+            {renderTableHeaders()}
           </thead>
           <tbody>{renderTableBody()}</tbody>
         </table>
