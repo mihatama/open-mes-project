@@ -14,9 +14,4 @@ router.register(r'stock-movements', rest_views.StockMovementViewSet, basename='s
 
 urlpatterns = [
     path('', include(router.urls)),
-
-    # CSV Template and Import URLs for Purchase Orders
-    # These are kept separate as they are specific actions not tied to a single resource instance.
-    path('purchase-order/csv-template/', rest_views.PurchaseOrderCSVTemplateView.as_view(), name='purchase_order_csv_template'),
-    path('purchase-order/import-csv/', rest_views.PurchaseOrderImportCSVView.as_view(), name='purchase_order_import_csv'),
 ]

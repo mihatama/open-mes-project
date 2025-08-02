@@ -138,17 +138,17 @@ const CSV_DATA_TYPES = [
     {
         label: "マスターデータ",
         options: [
-            { value: "item", label: "品番マスター", templateUrl: "/api/master/item/csv-template/", uploadUrl: "/api/master/item/import-csv/" },
-            { value: "supplier", label: "サプライヤーマスター", templateUrl: "/api/master/supplier/csv-template/", uploadUrl: "/api/master/supplier/import-csv/" },
-            { value: "warehouse", label: "倉庫マスター", templateUrl: "/api/master/warehouse/csv-template/", uploadUrl: "/api/master/warehouse/import-csv/" },
+            { value: "item", label: "品番マスター" },
+            { value: "supplier", label: "サプライヤーマスター" },
+            { value: "warehouse", label: "倉庫マスター" },
         ]
     },
     {
         label: "業務データ",
         options: [
-            { value: "purchase_order", label: "入庫予定", templateUrl: "/api/inventory/purchase-order/csv-template/", uploadUrl: "/api/inventory/purchase-order/import-csv/" },
-            { value: "production_plan", label: "生産計画", templateUrl: "/api/production/plan/csv-template/", uploadUrl: "/api/production/plan/import-csv/" },
-            { value: "parts_used", label: "使用部品", templateUrl: "/api/production/parts-used/csv-template/", uploadUrl: "/api/production/parts-used/import-csv/" },
+            { value: "purchase_order", label: "入庫予定" },
+            { value: "production_plan", label: "生産計画" },
+            { value: "parts_used", label: "使用部品" },
         ]
     }
 ];
@@ -191,7 +191,6 @@ const DataImport = () => {
     // State for CSV Upload
     const [csvDataType, setCsvDataType] = useState('');
     const [csvFile, setCsvFile] = useState(null);
-    const [csvUploadUrl, setCsvUploadUrl] = useState('');
     const [csvTemplateUrl, setCsvTemplateUrl] = useState('');
 
     const handleShowRegisterModal = useCallback(async (type, recordId = null) => {
@@ -302,9 +301,11 @@ const DataImport = () => {
     const handleCsvDataTypeChange = (e) => {
         const value = e.target.value;
         setCsvDataType(value);
-        const selectedOption = CSV_DATA_TYPES.flatMap(g => g.options).find(o => o.value === value);
-        setCsvUploadUrl(selectedOption?.uploadUrl || '');
-        setCsvTemplateUrl(selectedOption?.templateUrl || '');
+        if (value) {
+            setCsvTemplateUrl(`/api/base/csv-mappings/csv-template/?data_type=${value}`);
+        } else {
+            setCsvTemplateUrl('');
+        }
     };
 
     const handleTemplateDownload = async (e) => {
@@ -343,13 +344,14 @@ const DataImport = () => {
 
     const handleCsvUpload = async (e) => {
         e.preventDefault();
-        if (!csvFile || !csvUploadUrl) return;
+        if (!csvFile || !csvDataType) return;
+        const uploadUrl = `/api/base/csv-mappings/import-csv/?data_type=${csvDataType}`;
         const uploadData = new FormData();
         uploadData.append('csv_file', csvFile);
-        uploadData.append('data_type', csvDataType);
+
         setIsLoading(true);
         try {
-            const response = await fetch(csvUploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
+            const response = await fetch(uploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
             const result = await response.json();
             setCsvResult({ message: result.message, isError: result.status !== 'success' && result.status !== 'partial_success', errors: result.errors || [] });
         } catch (err) {
