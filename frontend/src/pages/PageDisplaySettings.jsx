@@ -190,6 +190,16 @@ const PageDisplaySettings = () => {
         setFieldsData(newFieldsData);
     };
 
+    const onDragEnd = (result) => {
+        if (!result.destination) {
+            return;
+        }
+        // droppableIdは 'list-droppable' または 'search-droppable'
+        const type = result.source.droppableId === 'list-droppable' ? 'list' : 'search';
+        handleDragEnd(result, type);
+    };
+
+
     const renderTableRow = (item, provided, snapshot, type) => {
         const originalIndex = fieldsData.findIndex(f => f.model_field_name === item.model_field_name);
         const filterKey = type === 'list' ? 'is_list_display' : 'is_search_field';
@@ -231,40 +241,37 @@ const PageDisplaySettings = () => {
         const droppableId = type === 'list' ? 'list-droppable' : 'search-droppable';
         const title = type === 'list' ? '一覧表示項目' : '検索対象項目';
 
-        const itemsToRender = fieldsData
+        // stateを直接変更しないように、配列のコピーを作成してからソートする
+        const itemsToRender = [...fieldsData]
             .sort((a, b) => a[orderKey] - b[orderKey]);
 
         return (
             <>
                 <h4>{title}</h4>
-                {!loading && !error && (
-                    <DragDropContext onDragEnd={(result) => handleDragEnd(result, type)}>
-                        <Table striped bordered hover responsive>
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>順序</th>
-                                    <th style={{ minWidth: '120px' }}>モデル項目</th>
-                                    <th style={{ minWidth: '120px' }}>表示名</th>
-                                    <th style={{ width: '80px' }}>一覧</th>
-                                    <th style={{ width: '80px' }}>検索</th>
-                                    <th style={{ width: '80px' }}>フィルタ</th>
-                                </tr>
-                            </thead>
-                            <Droppable droppableId={droppableId}>
-                                {(provided) => (
-                                    <tbody {...provided.droppableProps} ref={provided.innerRef}>
-                                        {itemsToRender.map((item, index) => (
-                                            <Draggable key={item.model_field_name} draggableId={`${type}-${item.model_field_name}`} index={index}>
-                                                {(provided, snapshot) => renderTableRow(item, provided, snapshot, type)}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </tbody>
-                                )}
-                            </Droppable>
-                        </Table>
-                    </DragDropContext>
-                )}
+                <Table striped bordered hover responsive>
+                    <thead>
+                        <tr>
+                            <th style={{ width: '60px' }}>順序</th>
+                            <th style={{ minWidth: '120px' }}>モデル項目</th>
+                            <th style={{ minWidth: '120px' }}>表示名</th>
+                            <th style={{ width: '80px' }}>一覧</th>
+                            <th style={{ width: '80px' }}>検索</th>
+                            <th style={{ width: '80px' }}>フィルタ</th>
+                        </tr>
+                    </thead>
+                    <Droppable droppableId={droppableId}>
+                        {(provided) => (
+                            <tbody {...provided.droppableProps} ref={provided.innerRef}>
+                                {itemsToRender.map((item, index) => (
+                                    <Draggable key={item.model_field_name} draggableId={`${type}-${item.model_field_name}`} index={index}>
+                                        {(provided, snapshot) => renderTableRow(item, provided, snapshot, type)}
+                                    </Draggable>
+                                ))}
+                                {provided.placeholder}
+                            </tbody>
+                        )}
+                    </Droppable>
+                </Table>
             </>
         );
     };
@@ -296,12 +303,16 @@ const PageDisplaySettings = () => {
             {loading && <Spinner animation="border" />}
             {error && <Alert variant="danger">{error}</Alert>}
 
-            <div className="mb-5">
-                {renderTable('list')}
-            </div>
-            <div>
-                {renderTable('search')}
-            </div>
+            {!loading && !error && (
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <div className="mb-5">
+                        {renderTable('list')}
+                    </div>
+                    <div>
+                        {renderTable('search')}
+                    </div>
+                </DragDropContext>
+            )}
         </Container>
     );
 };
