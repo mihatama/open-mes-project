@@ -144,6 +144,11 @@ class ModelDisplaySetting(models.Model):
         default=10,
         help_text=_("一覧画面での表示順を制御します。小さい順に表示されます。")
     )
+    search_order = models.PositiveIntegerField(
+        _("検索順"),
+        default=10,
+        help_text=_("検索項目としての表示順を制御します。小さい順に表示されます。")
+    )
     is_list_display = models.BooleanField(
         _("一覧表示"),
         default=True,

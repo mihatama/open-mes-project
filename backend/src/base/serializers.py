@@ -39,6 +39,7 @@ class ModelDisplaySettingSerializer(serializers.ModelSerializer):
             'display_name',
             'verbose_name',
             'display_order',
+            'search_order',
             'is_list_display',
             'is_search_field',
             'is_list_filter',
@@ -48,23 +49,32 @@ class ModelDisplaySettingSerializer(serializers.ModelSerializer):
     def get_verbose_name(self, obj):
         """
         モデルフィールド名からverbose_nameを取得する。
-        モデルに存在しないプロパティなどの場合は、ハードコードした値を返す。
+        'goods_receipt' は PurchaseOrder と Receipt の両方のフィールドを含む可能性があるため、
+        両方のモデルをチェックする。
         """
-        model_string = DATA_TYPE_MODEL_MAPPING.get(obj.data_type)
-        if not model_string:
-            return obj.model_field_name
-        try:
-            app_label, model_name = model_string.split('.')
-            model = apps.get_model(app_label=app_label, model_name=model_name)
-            field = model._meta.get_field(obj.model_field_name)
-            # verbose_nameが空文字列の場合も考慮し、フォールバックする
-            return str(field.verbose_name) or obj.model_field_name
-        except (LookupError, ValueError, FieldDoesNotExist):
-            # Handle properties/custom fields that are not real model fields
-            if obj.data_type == 'purchase_order':
-                if obj.model_field_name == 'remaining_quantity':
-                    return '残数量'
-                if obj.model_field_name == 'received_quantity':
-                    return '入庫済数量'
-            # Fallback to the field name itself
-            return obj.model_field_name
+        # チェック対象のモデルを決定
+        models_to_check_strings = []
+        if obj.data_type == 'goods_receipt':
+            # goods_receipt は purchase_order と receipt のフィールドを持つ
+            models_to_check_strings.append(DATA_TYPE_MODEL_MAPPING.get('purchase_order'))
+            models_to_check_strings.append(DATA_TYPE_MODEL_MAPPING.get('goods_receipt'))
+        else:
+            models_to_check_strings.append(DATA_TYPE_MODEL_MAPPING.get(obj.data_type))
+
+        # モデルを順番にチェックしてフィールドを探す
+        for model_string in filter(None, models_to_check_strings):
+            try:
+                app_label, model_name = model_string.split('.')
+                model = apps.get_model(app_label=app_label, model_name=model_name)
+                field = model._meta.get_field(obj.model_field_name)
+                return str(field.verbose_name) or obj.model_field_name
+            except (LookupError, ValueError, FieldDoesNotExist):
+                # このモデルにはフィールドがなかったので、次のモデルを試す
+                continue
+
+        # モデルフィールドに見つからなかった場合、プロパティをチェック
+        if obj.model_field_name == 'remaining_quantity': return '残数量'
+        if obj.model_field_name == 'received_quantity': return '入庫済数量'
+        
+        # それでも見つからなければフィールド名をそのまま返す
+        return obj.model_field_name

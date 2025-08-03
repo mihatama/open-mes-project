@@ -16,12 +16,12 @@ const GoodsReceipt = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [displaySettings, setDisplaySettings] = useState([]); // For dynamic columns
+  const [searchFields, setSearchFields] = useState([]); // State for dynamic search fields
+  const [searchOptions, setSearchOptions] = useState({}); // For dropdown options
 
   // State for search filters
   const [filters, setFilters] = useState({
-    orderNumber: '',
-    supplier: '',
-    partNumber: '',
+    // Dynamic fields will be added here
     status: 'pending', // Default to pending orders
   });
 
@@ -39,33 +39,90 @@ const GoodsReceipt = () => {
       dataApiUrl = pageUrl;
     } else {
       const params = new URLSearchParams();
-      if (filters.orderNumber) params.append('search_order_number', filters.orderNumber);
-      if (filters.supplier) params.append('search_supplier', filters.supplier);
-      if (filters.partNumber) params.append('search_part_number', filters.partNumber);
-      if (filters.status) params.append('search_status', filters.status);
+      // Dynamic filter parameter construction
+      for (const [key, value] of Object.entries(filters)) {
+        if (value) {
+          params.append(`search_${key}`, value);
+        }
+      }
       dataApiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
     }
     
-    // The "Page Display Settings" for "Goods Receipt" saves settings for both purchase_order and goods_receipt.
-    // We fetch settings for 'purchase_order' as the primary data source for this page's table.
-    const settingsUrl = '/api/base/model-display-settings/?data_type=purchase_order';
+    const settingsUrl = '/api/base/model-display-settings/?data_type=goods_receipt';
+    const poFieldsUrl = '/api/base/model-fields/?data_type=purchase_order';
+    const grFieldsUrl = '/api/base/model-fields/?data_type=goods_receipt';
 
     try {
-      const [settingsResponse, dataResponse] = await Promise.all([
+      const [settingsResponse, dataResponse, poFieldsResponse, grFieldsResponse] = await Promise.all([
         fetch(settingsUrl),
-        fetch(dataApiUrl)
+        fetch(dataApiUrl),
+        fetch(poFieldsUrl),
+        fetch(grFieldsUrl),
       ]);
+
+      // レスポンスのJSONボディは一度しか読み取れないため、先にパースして変数に格納します
+      const poFields = poFieldsResponse.ok ? await poFieldsResponse.json() : [];
+      const grFields = grFieldsResponse.ok ? await grFieldsResponse.json() : [];
+
+      // model-fields をマージして、model_field_name -> verbose_name のマップを作成
+      const verboseNameMap = new Map();
+      const fieldTypeMap = new Map();
+
+      poFields.forEach(field => {
+        verboseNameMap.set(field.name, field.verbose_name);
+        fieldTypeMap.set(field.name, field.field_type);
+      });
+      grFields.forEach(field => {
+          if (!verboseNameMap.has(field.name)) {
+              verboseNameMap.set(field.name, field.verbose_name);
+              fieldTypeMap.set(field.name, field.field_type);
+          }
+      });
 
       if (settingsResponse.ok) {
         const settings = await settingsResponse.json();
-        const visibleColumns = settings
+        
+        // settings に verbose_name を追加
+        const combinedSettings = settings.map(setting => ({
+            ...setting,
+            verbose_name: verboseNameMap.get(setting.model_field_name) || setting.model_field_name,
+            field_type: fieldTypeMap.get(setting.model_field_name) || 'Unknown',
+        }));
+
+        const visibleColumns = combinedSettings
           .filter(s => s.is_list_display)
           .sort((a, b) => a.display_order - b.display_order);
         setDisplaySettings(visibleColumns);
+
+        const searchableFields = combinedSettings
+          .filter(s => s.is_search_field)
+          .sort((a, b) => a.search_order - b.search_order);
+        setSearchFields(searchableFields);
+
+        // searchableFields に基づいて選択肢を取得
+        const newOptions = {};
+        const optionPromises = searchableFields
+          .filter(field => field.field_type === 'CharField') // CharFieldのみ対象
+          .map(async (field) => {
+              try {
+                  const res = await fetch(`/api/inventory/purchase-orders/distinct-values/?field=${field.model_field_name}`);
+                  if (res.ok) {
+                      const data = await res.json();
+                      newOptions[field.model_field_name] = data;
+                  }
+              } catch (e) {
+                  console.error(`Failed to fetch options for ${field.model_field_name}`, e);
+              }
+          });
+        
+        await Promise.all(optionPromises);
+        setSearchOptions(newOptions);
+
       } else {
         console.error('表示設定の取得に失敗しました。');
         // Fallback to empty, which will render default columns
         setDisplaySettings([]);
+        setSearchFields([]);
       }
 
       if (!dataResponse.ok) {
@@ -274,9 +331,43 @@ const GoodsReceipt = () => {
 
       {/* Filters */}
       <div className="goods-receipt-filters d-flex flex-wrap gap-2 align-items-center mb-3">
-        <input type="text" name="orderNumber" value={filters.orderNumber} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="発注番号で検索..." />
-        <input type="text" name="supplier" value={filters.supplier} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="仕入先で検索..." />
-        <input type="text" name="partNumber" value={filters.partNumber} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="品番で検索..." />
+        {searchFields
+          .filter(field => field.model_field_name !== 'status') // statusは固定で表示するので除外
+          .map(field => {
+            // CharField で、選択肢がある場合はプルダウンにする
+            if (field.field_type === 'CharField' && searchOptions[field.model_field_name]?.length > 0) {
+              return (
+                <select
+                  key={field.model_field_name}
+                  name={field.model_field_name}
+                  value={filters[field.model_field_name] || ''}
+                  onChange={handleFilterChange}
+                  className="form-select"
+                  style={{ width: 'auto', flexGrow: 1 }}
+                >
+                  <option value="">{`${field.verbose_name}で検索...`}</option>
+                  {searchOptions[field.model_field_name].map(optionValue => (
+                    <option key={optionValue} value={optionValue}>
+                      {optionValue}
+                    </option>
+                  ))}
+                </select>
+              );
+            }
+            // それ以外は従来のテキスト入力
+            return (
+              <input
+                key={field.model_field_name}
+                type="text"
+                name={field.model_field_name}
+                value={filters[field.model_field_name] || ''}
+                onChange={handleFilterChange}
+                className="form-control"
+                style={{ width: 'auto', flexGrow: 1 }}
+                placeholder={`${field.verbose_name}で検索...`}
+              />
+            );
+        })}
         <select name="status" value={filters.status} onChange={handleFilterChange} className="form-select" style={{ width: 'auto' }}>
             <option value="">全てのステータス</option>
             <option value="pending">未入庫</option>

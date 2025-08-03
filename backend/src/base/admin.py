@@ -61,8 +61,8 @@ class CsvColumnMappingAdmin(DynamicAdminMixin, admin.ModelAdmin):
 
 @admin.register(ModelDisplaySetting)
 class ModelDisplaySettingAdmin(admin.ModelAdmin):
-    list_display = ('data_type', 'model_field_name', 'display_name', 'display_order', 'is_list_display', 'is_search_field', 'is_list_filter', 'updated_at')
+    list_display = ('data_type', 'model_field_name', 'display_name', 'display_order', 'search_order', 'is_list_display', 'is_search_field', 'is_list_filter', 'updated_at')
     list_filter = ('data_type', 'is_list_display', 'is_search_field', 'is_list_filter')
     search_fields = ('model_field_name', 'display_name')
     ordering = ('data_type', 'display_order')
-    list_editable = ('display_name', 'display_order', 'is_list_display', 'is_search_field', 'is_list_filter')
+    list_editable = ('display_name', 'display_order', 'search_order', 'is_list_display', 'is_search_field', 'is_list_filter')

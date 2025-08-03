@@ -75,6 +75,7 @@ class ModelFieldsView(APIView):
             fields_data.append({
                 'name': field.name,
                 'verbose_name': str(field.verbose_name),
+                'field_type': field.get_internal_type(),
                 'is_required': not field.blank,
                 'default_value': str(default_value) if default_value is not None else None,
                 'help_text': str(field.help_text),

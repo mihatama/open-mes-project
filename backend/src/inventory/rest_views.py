@@ -8,7 +8,8 @@ from .serializers import (PurchaseOrderSerializer, InventorySerializer, StockMov
 from .models import PurchaseOrder, Inventory, StockMovement, SalesOrder, Receipt # SalesOrder, Receiptモデルをインポート
 from django.http import JsonResponse # JsonResponse をインポート
 from django.db import transaction, IntegrityError # トランザクションのためにインポート # Qオブジェクトをインポートして複雑なクエリを構築
-from django.db.models import Q, F # Fオブジェクトをインポート
+from django.db import models
+from django.db.models import Q, F
 from django.shortcuts import get_object_or_404 # オブジェクト取得のためにインポート
 from django.db.models import ProtectedError # Import ProtectedError
 from django.http import HttpResponse
@@ -177,7 +178,11 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
         search_status = self.request.query_params.get('search_status')
         if search_status:
-            filters &= Q(status=search_status)
+            # フロントエンドから 'received' が来た場合、両方の入庫済みステータスを検索対象とする
+            if search_status == 'received':
+                filters &= Q(status__in=['partially_received', 'fully_received'])
+            else:
+                filters &= Q(status=search_status)
 
         date_filters_map = {
             'search_order_date_from': 'order_date__date__gte',
@@ -205,6 +210,24 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         # For now, this is a placeholder.
         return Response({'message': 'Process receipt action is not fully implemented yet.'}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
+    @action(detail=False, methods=['get'], url_path='distinct-values')
+    def distinct_values(self, request):
+        """
+        指定されたフィールドのユニークな値のリストを返します。
+        CharFieldのみを対象とします。
+        """
+        field_name = request.query_params.get('field')
+
+        # セキュリティ: CharField 型のフィールドのみを許可
+        allowed_fields = [f.name for f in PurchaseOrder._meta.get_fields() if isinstance(f, models.CharField)]
+
+        if not field_name or field_name not in allowed_fields:
+            return Response({'error': 'Invalid or missing field parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 空やNULLでない値のみを取得し、ソートする
+        values = PurchaseOrder.objects.filter(**{f'{field_name}__isnull': False}).exclude(**{f'{field_name}': ''}).values_list(field_name, flat=True).distinct().order_by(field_name)
+
+        return Response(list(values))
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
     """
