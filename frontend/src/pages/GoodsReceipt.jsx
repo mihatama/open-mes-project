@@ -203,7 +203,7 @@ const GoodsReceipt = () => {
     }
 
     try {
-      const response = await fetch('/api/inventory/purchase-receipts/process/', {
+      const response = await fetch('/api/inventory/purchase-orders/process-receipt/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({

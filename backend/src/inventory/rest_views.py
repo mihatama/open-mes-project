@@ -202,13 +202,87 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='process-receipt')
     def process_receipt(self, request):
-        # Logic from process_purchase_receipt_api
+        """
+        指定された発注IDに基づいて入庫処理を行う。
+        - Receipt（入庫実績）レコードを作成
+        - Inventory（在庫）を更新
+        - StockMovement（在庫移動履歴）を作成
+        - PurchaseOrder（発注）のステータスを更新
+        """
         purchase_order_id = request.data.get('purchase_order_id')
-        order_number = request.data.get('order_number')
-        received_quantity = request.data.get('received_quantity')
-        # ... (rest of the logic from the original function)
-        # For now, this is a placeholder.
-        return Response({'message': 'Process receipt action is not fully implemented yet.'}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        received_quantity_str = request.data.get('received_quantity')
+        location = request.data.get('location', '').strip()
+        warehouse = request.data.get('warehouse', '').strip()
+        operator = request.user
+
+        if not all([purchase_order_id, received_quantity_str]):
+            return Response({'error': '必須項目が不足しています。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            received_quantity = int(received_quantity_str)
+            if received_quantity <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return Response({'error': '入庫数量は正の整数である必要があります。'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                po = get_object_or_404(PurchaseOrder.objects.select_for_update(), pk=purchase_order_id)
+
+                # 在庫計上には品番が必須なため、存在をチェックする
+                if not po.part_number:
+                    return Response({'error': 'この発注には品番が設定されていないため、入庫処理（在庫計上）ができません。'}, status=status.HTTP_400_BAD_REQUEST)
+
+                remaining_quantity = po.quantity - po.received_quantity
+                if received_quantity > remaining_quantity:
+                    return Response({'error': f'入庫数量が残数量({remaining_quantity})を超えています。'}, status=status.HTTP_400_BAD_REQUEST)
+
+                if not warehouse: warehouse = po.warehouse
+                if not location: location = po.location
+                if not warehouse: return Response({'error': '入庫倉庫が指定されていません。'}, status=status.HTTP_400_BAD_REQUEST)
+
+                # 1. Create Receipt
+                Receipt.objects.create(
+                    purchase_order=po, received_quantity=received_quantity, received_date=datetime.now(),
+                    warehouse=warehouse, location=location, operator=operator
+                )
+
+                # 2. Update/Create Inventory
+                inventory, created = Inventory.objects.get_or_create(
+                    part_number=po.part_number, warehouse=warehouse, location=location,
+                    defaults={'quantity': received_quantity}
+                )
+                if not created:
+                    inventory.quantity = F('quantity') + received_quantity
+                    inventory.save()
+
+                # 3. Create Stock Movement
+                StockMovement.objects.create(
+                    part_number=po.part_number, movement_type='receipt', quantity=received_quantity,
+                    warehouse=warehouse, location=location, reference_document=f"PO: {po.order_number}",
+                    description=f"発注番号 {po.order_number} の入庫", operator=operator
+                )
+
+                # 4. Update Purchase Order status
+                po.received_quantity = F('received_quantity') + received_quantity
+                po.save()
+                po.refresh_from_db()
+
+                if po.received_quantity >= po.quantity:
+                    po.status = 'fully_received'
+                else:
+                    po.status = 'partially_received'
+                po.save()
+
+                return Response({
+                    'success': True, 'message': f'発注 {po.order_number} の入庫処理が正常に完了しました。',
+                    'order_number': po.order_number
+                }, status=status.HTTP_200_OK)
+
+        except PurchaseOrder.DoesNotExist:
+            return Response({'error': '指定された発注が見つかりません。'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': f'処理中に予期せぬエラーが発生しました: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='distinct-values')
     def distinct_values(self, request):

@@ -132,6 +132,7 @@ class StockMovementSerializer(serializers.ModelSerializer):
             'id',
             'part_number',
             'warehouse',
+            'location',
             'movement_type',
             'movement_type_display', # 表示用の移動タイプ名
             'quantity',

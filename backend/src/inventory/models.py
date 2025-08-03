@@ -47,6 +47,7 @@ class StockMovement(models.Model):
 
     part_number = models.CharField(max_length=255, null=True, blank=True, verbose_name="品番")  # 在庫対象の製品/材料の品番 (文字列として保持)
     warehouse = models.CharField(max_length=255, null=True, blank=True, verbose_name="倉庫") # どの倉庫に関連する移動か
+    location = models.CharField(max_length=255, blank=True, null=True, verbose_name="棚番") # どの棚番に関連する移動か
     movement_type = models.CharField(max_length=20, choices=MOVEMENT_TYPE_CHOICES, verbose_name="移動タイプ")  # 入庫・出庫・使用
     quantity = models.PositiveIntegerField(verbose_name="数量")  # 数量
     movement_date = models.DateTimeField(default=timezone.now, verbose_name="移動日時")  # 変更日時
@@ -70,6 +71,7 @@ class PurchaseOrder(models.Model):
     supplier = models.CharField(max_length=255,  null=True, blank=True, verbose_name="仕入先")  # 仕入れ先
     item = models.CharField(max_length=255,  null=True, blank=True, verbose_name="品目")  # 発注対象（製品・材料）
     quantity = models.PositiveIntegerField(verbose_name="発注数量", null=True, blank=True)  # 発注数量
+    received_quantity = models.PositiveIntegerField(default=0, verbose_name="入庫済数量")
     part_number = models.CharField(max_length=100, blank=True, null=True, verbose_name="品番")
     product_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="品名")
     parent_part_number = models.CharField(max_length=100, blank=True, null=True, verbose_name="親品番")
@@ -98,12 +100,6 @@ class PurchaseOrder(models.Model):
     def __str__(self):
         item_display = self.item if self.item else "N/A"
         return f"PO {self.order_number} - {item_display} ({self.status})"
-
-    @property
-    def received_quantity(self):
-        """関連する入庫実績の合計数量を計算して返す"""
-        total = self.receipts.aggregate(total=Sum('received_quantity'))['total']
-        return total or 0
 
     @property
     def remaining_quantity(self):
