@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.apps import apps
 from django.core.exceptions import FieldDoesNotExist
-from .models import CsvColumnMapping, ModelDisplaySetting, DATA_TYPE_MODEL_MAPPING
+from .models import CsvColumnMapping, ModelDisplaySetting, QrCodeAction, DATA_TYPE_MODEL_MAPPING
 
 
 class CsvColumnMappingSerializer(serializers.ModelSerializer):
@@ -23,6 +23,23 @@ class CsvColumnMappingSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['data_type_display']
         validators = [] # bulk-save時にUniqueTogetherValidatorを無効化するため
+
+
+class QrCodeActionSerializer(serializers.ModelSerializer):
+    """
+    QrCodeActionモデル用のシリアライザー。
+    """
+    class Meta:
+        model = QrCodeAction
+        fields = [
+            'id',
+            'name',
+            'description',
+            'qr_code_pattern',
+            'script',
+            'is_active',
+        ]
+        read_only_fields = ['id']
 
 
 class ModelDisplaySettingSerializer(serializers.ModelSerializer):

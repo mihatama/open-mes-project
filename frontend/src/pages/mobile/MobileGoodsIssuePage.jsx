@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Form, Button, Row, Col, Card, Badge, Modal, Spinner, Alert, Pagination as BootstrapPagination } from 'react-bootstrap';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Container, Form, Button, Row, Col, Card, Badge, Modal, Spinner, Alert, Pagination as BootstrapPagination, InputGroup } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { getCookie } from '../../utils/cookies';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import './MobileLocationTransferPage.css'; // スタイルを再利用
 
 const MobileGoodsIssuePage = () => {
     // State for data and UI
@@ -27,6 +30,16 @@ const MobileGoodsIssuePage = () => {
     const [quantityToShip, setQuantityToShip] = useState('');
     const [modalMessage, setModalMessage] = useState({ text: '', type: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // カメラの状態
+    const [cameraState, setCameraState] = useState({
+        isOpen: false,
+        targetSetter: null,
+    });
+    const videoRef = useRef(null);
+    const codeReader = useRef(new BrowserMultiFormatReader());
+
+    const navigate = useNavigate();
 
     const fetchSalesOrders = useCallback(async (page, query, status) => {
         setLoading(true);
@@ -63,6 +76,123 @@ const MobileGoodsIssuePage = () => {
         fetchSalesOrders(currentPage, committedSearchParams.q, committedSearchParams.status);
     }, [currentPage, committedSearchParams, fetchSalesOrders]);
 
+    // --- Camera Scan Logic ---
+    const startCameraScan = (targetSetter) => {
+        setCameraState({ isOpen: true, targetSetter: targetSetter });
+    };
+
+    const stopCameraScan = useCallback(() => {
+        setCameraState({ isOpen: false, targetSetter: null });
+    }, []);
+
+    useEffect(() => {
+        if (cameraState.isOpen && videoRef.current) {
+            let controls = null;
+            codeReader.current
+                .decodeFromVideoDevice(undefined, videoRef.current,
+                    (result, error, ctrl) => {
+                        if (result) {
+                            // Successful scan, stop the camera
+                            ctrl.stop();
+                            setCameraState({ isOpen: false, targetSetter: null });
+                            handleQrCodeResult(result.getText(), cameraState.targetSetter);
+                        }
+                        if (error && !(error instanceof NotFoundException)) {
+                            console.error(error);
+                            ctrl.stop();
+                            setError('バーコードの読み取りに失敗しました。');
+                            setCameraState({ isOpen: false, targetSetter: null });
+                        }
+                    }
+                )
+                .then(ctrl => { controls = ctrl; })
+                .catch(err => {
+                    console.error(err);
+                    setError('カメラの起動に失敗しました。');
+                    setCameraState({ isOpen: false, targetSetter: null });
+                });
+            return () => { if (controls) controls.stop(); };
+        }
+        codeReader.current.reset();
+    }, [cameraState.isOpen, cameraState.targetSetter, setError]);
+    
+    const handleOpenModal = useCallback((order) => {
+        setSelectedOrder(order);
+        setQuantityToShip(order.remaining_quantity > 0 ? String(order.remaining_quantity) : '1');
+        setModalMessage({ text: '', type: '' });
+        setIsSubmitting(false);
+        setShowModal(true);
+    }, []);
+
+    const handleQrCodeResult = useCallback(async (decodedText, defaultSetter) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await fetch('/api/base/qr-code-actions/execute/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ qr_data: decodedText }),
+            });
+
+            if (response.status === 404) {
+                if (defaultSetter) defaultSetter(decodedText);
+                return;
+            }
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `サーバーエラー: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const { action, payload, navigate: navTarget, state, updateSearch } = data.result || {};
+
+            let handled = false;
+            if (action) {
+                switch (action) {
+                    case 'goods_issue':
+                        if (payload) {
+                            handleOpenModal(payload);
+                            handled = true;
+                        }
+                        break;
+                    case 'navigate':
+                        if (navTarget) {
+                            navigate(navTarget, { state });
+                            handled = true;
+                        }
+                        break;
+                    case 'update_search':
+                        if (updateSearch) {
+                            setSearchQueryInput(updateSearch);
+                            setCommittedSearchParams({ q: updateSearch, status: searchStatusInput });
+                            setCurrentPage(1);
+                            handled = true;
+                        }
+                        break;
+                }
+            }
+
+            // Fallback for older action format
+            if (!handled && updateSearch) {
+                setSearchQueryInput(updateSearch);
+                setCommittedSearchParams({ q: updateSearch, status: searchStatusInput });
+                setCurrentPage(1);
+                handled = true;
+            }
+
+            if (!handled && defaultSetter) defaultSetter(decodedText);
+        } catch (err) {
+            setError(`QRコード処理エラー: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    }, [navigate, searchStatusInput, handleOpenModal]);
+    
     const handleSearch = (e) => {
         e.preventDefault();
         setCurrentPage(1);
@@ -74,14 +204,6 @@ const MobileGoodsIssuePage = () => {
         setSearchStatusInput('pending');
         setCurrentPage(1);
         setCommittedSearchParams({ q: '', status: 'pending' });
-    };
-
-    const handleOpenModal = (order) => {
-        setSelectedOrder(order);
-        setQuantityToShip(order.remaining_quantity > 0 ? String(order.remaining_quantity) : '1');
-        setModalMessage({ text: '', type: '' });
-        setIsSubmitting(false);
-        setShowModal(true);
     };
 
     const handleCloseModal = () => {
@@ -182,13 +304,15 @@ const MobileGoodsIssuePage = () => {
                     <Col md={9} xs={12}>
                         <Form.Group controlId="search-q">
                             <Form.Label className="form-label-sm">検索 (受注番号/品番/倉庫):</Form.Label>
-                            <Form.Control
-                                type="text"
-                                size="sm"
-                                placeholder="受注番号, 品番, 倉庫で検索"
-                                value={searchQueryInput}
-                                onChange={(e) => setSearchQueryInput(e.target.value)}
-                            />
+                            <InputGroup size="sm">
+                                <Form.Control
+                                    type="text"
+                                    placeholder="受注番号, 品番, 倉庫で検索"
+                                    value={searchQueryInput}
+                                    onChange={(e) => setSearchQueryInput(e.target.value)}
+                                />
+                                <Button variant="outline-secondary" type="button" onClick={() => startCameraScan(setSearchQueryInput)} title="カメラでスキャン">📷</Button>
+                            </InputGroup>
                         </Form.Group>
                     </Col>
                     <Col md={3} xs={12}>
@@ -329,6 +453,15 @@ const MobileGoodsIssuePage = () => {
                 </Button>
             </Modal.Footer>
         </Modal>
+
+        {/* Camera View */}
+        {cameraState.isOpen && (
+            <div className="camera-view-container">
+                <video ref={videoRef} className="camera-video-element"></video>
+                <div className="camera-targeting-guide"></div>
+                <button onClick={stopCameraScan} className="btn btn-danger close-camera-button">&times; 閉じる</button>
+            </div>
+        )}
     </Container>
   );
 };

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import BaseSetting, CsvColumnMapping, ModelDisplaySetting
+from .models import BaseSetting, CsvColumnMapping, ModelDisplaySetting, QrCodeAction
 
 class DynamicAdminMixin:
     """
@@ -58,6 +58,14 @@ class CsvColumnMappingAdmin(DynamicAdminMixin, admin.ModelAdmin):
     search_fields = ('csv_header', 'model_field_name')
     ordering = ('data_type', 'order')
     list_editable = ('order', 'is_update_key', 'is_active')
+
+@admin.register(QrCodeAction)
+class QrCodeActionAdmin(DynamicAdminMixin, admin.ModelAdmin):
+    _data_type = 'qr_code_action'
+    list_display = ('name', 'qr_code_pattern', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'description', 'qr_code_pattern')
+    ordering = ('name',)
 
 @admin.register(ModelDisplaySetting)
 class ModelDisplaySettingAdmin(admin.ModelAdmin):

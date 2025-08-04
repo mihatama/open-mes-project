@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getCookie } from '../../utils/cookies';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileGoodsReceiptPage.css';
+import './MobileLocationTransferPage.css'; // スタイルを再利用
 
 const MobileGoodsReceiptPage = () => {
   // State for purchase orders, loading/error status
@@ -17,6 +20,16 @@ const MobileGoodsReceiptPage = () => {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
 
+  // カメラの状態
+  const [cameraState, setCameraState] = useState({
+    isOpen: false,
+    targetSetter: null,
+  });
+  const videoRef = useRef(null);
+  const codeReader = useRef(new BrowserMultiFormatReader());
+
+  const navigate = useNavigate();
+
   // API call to fetch purchase order data
   const fetchPurchaseOrders = useCallback(async () => {
     setIsLoading(true);
@@ -25,9 +38,9 @@ const MobileGoodsReceiptPage = () => {
     const params = new URLSearchParams();
     if (searchTerm) {
       // Search by order number, part number, etc.
-      params.append('search_order_number', searchTerm);
+      params.append('search', searchTerm);
     }
-    params.append('search_status', 'pending'); // Mobile view is for pending receipts
+    params.append('status', 'pending'); // Mobile view is for pending receipts
     const apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
 
     try {
@@ -53,18 +66,117 @@ const MobileGoodsReceiptPage = () => {
     return () => clearTimeout(handler);
   }, [searchTerm, fetchPurchaseOrders]);
 
-  // Handlers for form
-  const openReceiptForm = (order) => {
+  // --- Camera Scan Logic ---
+  const startCameraScan = (targetSetter) => {
+    setCameraState({ isOpen: true, targetSetter: targetSetter });
+  };
+
+  const stopCameraScan = useCallback(() => {
+    setCameraState({ isOpen: false, targetSetter: null });
+  }, []);
+
+  useEffect(() => {
+    if (cameraState.isOpen && videoRef.current) {
+      let controls = null;
+      codeReader.current
+        .decodeFromVideoDevice(undefined, videoRef.current,
+          (result, error, ctrl) => {
+            if (result) {
+              ctrl.stop();
+              setCameraState({ isOpen: false, targetSetter: null });
+              handleQrCodeResult(result.getText(), cameraState.targetSetter);
+            }
+            if (error && !(error instanceof NotFoundException)) {
+              console.error(error);
+              ctrl.stop();
+              setError('バーコードの読み取りに失敗しました。');
+              setCameraState({ isOpen: false, targetSetter: null });
+            }
+          }
+        )
+        .then(ctrl => { controls = ctrl; })
+        .catch(err => { console.error(err); setError('カメラの起動に失敗しました。'); setCameraState({ isOpen: false, targetSetter: null }); });
+      return () => { if (controls) controls.stop(); };
+    }
+    codeReader.current.reset();
+  }, [cameraState.isOpen, cameraState.targetSetter, setError]);
+
+  const openReceiptForm = useCallback((order) => {
     const remainingQuantity = order.quantity - order.received_quantity;
     setSelectedOrder(order);
     setReceiptFormData({
-      received_quantity: remainingQuantity > 0 ? remainingQuantity : '',
+      received_quantity: remainingQuantity > 0 ? String(remainingQuantity) : '',
       location: order.location || '',
       warehouse: order.warehouse || '',
     });
     setFormError('');
     setFormSuccess('');
-  };
+  }, []);
+
+  const handleQrCodeResult = useCallback(async (decodedText, defaultSetter) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/base/qr-code-actions/execute/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ qr_data: decodedText }),
+      });
+
+      if (response.status === 404) {
+        if (defaultSetter) defaultSetter(decodedText);
+        return;
+      }
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `サーバーエラー: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const { action, payload, navigate: navTarget, state, updateSearch, updateFields } = data.result || {};
+
+      let handled = false;
+      if (action) {
+        switch (action) {
+          case 'goods_receipt':
+            if (payload) {
+              openReceiptForm(payload);
+              handled = true;
+            }
+            break;
+          case 'navigate':
+            if (navTarget) {
+              navigate(navTarget, { state });
+              handled = true;
+            }
+            break;
+          case 'update_search':
+            if (updateSearch) {
+              setSearchTerm(updateSearch);
+              handled = true;
+            }
+            break;
+          case 'update_fields':
+            if (updateFields) {
+              setReceiptFormData(prev => ({ ...prev, ...updateFields }));
+              handled = true;
+            }
+            break;
+        }
+      }
+
+      if (!handled && defaultSetter) defaultSetter(decodedText);
+    } catch (err) {
+      setError(`QRコード処理エラー: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate, openReceiptForm]);
 
   const closeReceiptForm = () => {
     setSelectedOrder(null);
@@ -167,8 +279,20 @@ const MobileGoodsReceiptPage = () => {
             <p><strong>品名:</strong> {selectedOrder.product_name || selectedOrder.item}</p>
             <p><strong>残数量:</strong> {selectedOrder.quantity - selectedOrder.received_quantity}</p>
             <div className="mb-3"><label htmlFor="received_quantity" className="form-label">入庫数量</label><input type="number" id="received_quantity" name="received_quantity" value={receiptFormData.received_quantity} onChange={handleReceiptFormChange} className="form-control text-end" required min="1" max={selectedOrder.quantity - selectedOrder.received_quantity} /></div>
-            <div className="mb-3"><label htmlFor="warehouse" className="form-label">入庫倉庫</label><input type="text" id="warehouse" name="warehouse" value={receiptFormData.warehouse} onChange={handleReceiptFormChange} className="form-control" placeholder="倉庫" /></div>
-            <div className="mb-3"><label htmlFor="location" className="form-label">入庫棚番</label><input type="text" id="location" name="location" value={receiptFormData.location} onChange={handleReceiptFormChange} className="form-control" placeholder="棚番" /></div>
+            <div className="mb-3">
+              <label htmlFor="warehouse" className="form-label">入庫倉庫</label>
+              <div className="input-group">
+                <input type="text" id="warehouse" name="warehouse" value={receiptFormData.warehouse} onChange={handleReceiptFormChange} className="form-control" placeholder="倉庫" />
+                <button className="btn btn-outline-secondary" type="button" onClick={() => startCameraScan(value => setReceiptFormData(prev => ({ ...prev, warehouse: value })))} title="カメラでスキャン">📷</button>
+              </div>
+            </div>
+            <div className="mb-3">
+              <label htmlFor="location" className="form-label">入庫棚番</label>
+              <div className="input-group">
+                <input type="text" id="location" name="location" value={receiptFormData.location} onChange={handleReceiptFormChange} className="form-control" placeholder="棚番" />
+                <button className="btn btn-outline-secondary" type="button" onClick={() => startCameraScan(value => setReceiptFormData(prev => ({ ...prev, location: value })))} title="カメラでスキャン">📷</button>
+              </div>
+            </div>
             {formError && <div className="alert alert-danger">{formError}</div>}
             {formSuccess && <div className="alert alert-success">{formSuccess}</div>}
             <div className="d-grid gap-2 mt-4"><button type="submit" className="btn btn-primary">入庫実行</button><button type="button" className="btn btn-secondary" onClick={closeReceiptForm}>キャンセル</button></div>
@@ -181,9 +305,23 @@ const MobileGoodsReceiptPage = () => {
   return (
     <div className="mobile-goods-receipt-page">
       <h2 className="page-title">入庫処理</h2>
-      <div className="mb-3"><input type="search" className="form-control" placeholder="発注番号などで検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+      <div className="mb-3">
+        <div className="input-group">
+          <input type="search" className="form-control" placeholder="発注番号などで検索..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          <button className="btn btn-outline-secondary" type="button" onClick={() => startCameraScan(setSearchTerm)} title="カメラでスキャン">📷</button>
+        </div>
+      </div>
       {renderOrderList()}
       {renderReceiptForm()}
+
+      {/* Camera View */}
+      {cameraState.isOpen && (
+          <div className="camera-view-container">
+              <video ref={videoRef} className="camera-video-element"></video>
+              <div className="camera-targeting-guide"></div>
+              <button onClick={stopCameraScan} className="btn btn-danger close-camera-button">&times; 閉じる</button>
+          </div>
+      )}
     </div>
   );
 };

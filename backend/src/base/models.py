@@ -15,6 +15,7 @@ DATA_TYPE_CHOICES = [
     ('base_setting', _('基本設定')),
     ('csv_column_mapping', _('CSV列マッピング')),
     ('model_display_setting', _('モデル項目表示設定')),
+    ('qr_code_action', _('QRコードアクション')),
 ]
 
 # APIなどでモデル文字列とモデルクラスをマッピングするために使用
@@ -29,6 +30,7 @@ DATA_TYPE_MODEL_MAPPING = {
     'base_setting': 'base.BaseSetting',
     'csv_column_mapping': 'base.CsvColumnMapping',
     'model_display_setting': 'base.ModelDisplaySetting',
+    'qr_code_action': 'base.QrCodeAction',
 }
 
 class BaseSetting(models.Model):
@@ -175,3 +177,47 @@ class ModelDisplaySetting(models.Model):
 
     def __str__(self):
         return f"{self.get_data_type_display()}: {self.model_field_name}"
+
+
+class QrCodeAction(models.Model):
+    """
+    QRコード読み取り後のアクションを定義するモデル。
+    特定のパターンにマッチするQRコードが読み取られた際に、
+    定義されたPythonスクリプトを実行します。
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(
+        _("アクション名"),
+        max_length=100,
+        unique=True,
+        help_text=_("アクションを一意に識別する名前。")
+    )
+    description = models.TextField(
+        _("説明"),
+        blank=True,
+        help_text=_("このアクションが何をするかの説明。")
+    )
+    qr_code_pattern = models.CharField(
+        _("QRコードパターン"),
+        max_length=255,
+        help_text=_("マッチング対象のQRコードの正規表現パターン。例: '^ITEM-.+'")
+    )
+    script = models.TextField(
+        _("実行スクリプト"),
+        help_text=_("QRコードがマッチした際に実行されるPythonスクリプト。")
+    )
+    is_active = models.BooleanField(
+        _("有効"),
+        default=True,
+        help_text=_("このアクションが現在有効であるかを示します。")
+    )
+    created_at = models.DateTimeField(_("作成日時"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("QRコードアクション")
+        verbose_name_plural = _("QRコードアクション")
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name

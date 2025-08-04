@@ -30,6 +30,7 @@ import SystemSettings from './pages/SystemSettings.jsx';
 import CsvMappingSettings from './pages/CsvMappingSettings.jsx';
 import ModelDisplaySettings from './pages/ModelDisplaySettings.jsx';
 import PageDisplaySettings from './pages/PageDisplaySettings.jsx';
+import QrCodeActionSettings from './pages/QrCodeActionSettings.jsx';
 import MobileLayout from './layouts/MobileLayout.jsx';
 import MobileTopPage from './pages/MobileTopPage.jsx';
 import MobileGoodsReceiptPage from './pages/mobile/MobileGoodsReceiptPage.jsx';
@@ -195,6 +196,7 @@ function AppContent() {
           <Route path="/system/csv-mappings" element={<StaffRoute><CsvMappingSettings /></StaffRoute>} />
           <Route path="/system/model-display-settings" element={<StaffRoute><ModelDisplaySettings /></StaffRoute>} />
           <Route path="/system/page-display-settings" element={<StaffRoute><PageDisplaySettings /></StaffRoute>} />
+          <Route path="/system/qr-code-actions" element={<StaffRoute><QrCodeActionSettings /></StaffRoute>} />
         </Route>
 
         {/* Mobile Protected Routes */}

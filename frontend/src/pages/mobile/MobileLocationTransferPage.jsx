@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getCookie } from '../../utils/cookies';
+import { useNavigate } from 'react-router-dom';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileLocationTransferPage.css'; // 新しいCSSファイルをインポート
 
@@ -31,15 +32,17 @@ const MobileLocationTransferPage = () => {
   const videoRef = useRef(null);
   const codeReader = useRef(new BrowserMultiFormatReader());
 
+  const navigate = useNavigate();
+
   // メッセージ表示関数
-  const showMessage = (msg, type, isModal = false) => {
+  const showMessage = useCallback((msg, type, isModal = false) => {
     const messageObj = { text: msg, type: type };
     if (isModal) {
       setModalState(prev => ({ ...prev, message: messageObj }));
     } else {
       setMessage(messageObj);
     }
-  };
+  }, []);
 
   // 次へボタンの処理
   const handleFindItems = async () => {
@@ -164,17 +167,22 @@ const MobileLocationTransferPage = () => {
               // Successful scan, stop the camera
               ctrl.stop();
               setCameraState({ isOpen: false, targetSetter: null });
-              cameraState.targetSetter(result.getText());
+              handleQrCodeResult(result.getText(), cameraState.targetSetter);
             }
             if (error && !(error instanceof NotFoundException)) {
               console.error(error);
               ctrl.stop();
               showMessage('バーコードの読み取りに失敗しました。', 'error');
+              setCameraState({ isOpen: false, targetSetter: null });
             }
           }
         )
         .then(ctrl => { controls = ctrl; })
-        .catch(err => console.error(err));
+        .catch(err => {
+            console.error(err);
+            showMessage('カメラの起動に失敗しました。', 'error');
+            setCameraState({ isOpen: false, targetSetter: null });
+        });
       return () => {
         // Cleanup function to stop the camera when the component unmounts or isOpen changes.
         if (controls) {
@@ -184,7 +192,78 @@ const MobileLocationTransferPage = () => {
     }
     // If cameraState.isOpen is false, ensure the camera is stopped.
     codeReader.current.reset();
-  }, [cameraState.isOpen, cameraState.targetSetter]);
+  }, [cameraState.isOpen, cameraState.targetSetter, showMessage]);
+
+  const handleQrCodeResult = useCallback(async (decodedText, defaultSetter) => {
+    setIsLoading(true);
+    showMessage('', ''); // Clear main message
+
+    try {
+        const response = await fetch('/api/base/qr-code-actions/execute/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            body: JSON.stringify({ qr_data: decodedText }),
+        });
+
+        if (response.status === 404) {
+            if (defaultSetter) defaultSetter(decodedText);
+            return;
+        }
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `サーバーエラー: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const { action, payload, navigate: navTarget, state, updateFields } = data.result || {};
+
+        let handled = false;
+        if (action) {
+            switch (action) {
+                case 'location_transfer':
+                case 'update_fields': // Treat update_fields as an alias for location_transfer action
+                    const fields = payload || updateFields;
+                    if (fields) {
+                        if (fields.sourceLocation !== undefined) setSourceLocation(fields.sourceLocation);
+                        if (fields.warehouse !== undefined) setWarehouse(fields.warehouse);
+                        if (fields.targetLocation !== undefined) {
+                            setModalState(prev => ({ ...prev, targetLocation: fields.targetLocation }));
+                        }
+                        handled = true;
+                    }
+                    break;
+                case 'navigate':
+                    if (navTarget) {
+                        navigate(navTarget, { state });
+                        handled = true;
+                    }
+                    break;
+            }
+        }
+
+        // Fallback for older action format
+        if (!handled && updateFields) {
+            let handled = false;
+            const fields = updateFields;
+            if (fields.sourceLocation !== undefined) setSourceLocation(fields.sourceLocation);
+            if (fields.warehouse !== undefined) setWarehouse(fields.warehouse);
+            if (fields.targetLocation !== undefined) {
+                setModalState(prev => ({ ...prev, targetLocation: fields.targetLocation }));
+            }
+            handled = true;
+        }
+
+        if (!handled && defaultSetter) defaultSetter(decodedText);
+    } catch (err) {
+        showMessage(`QRコード処理エラー: ${err.message}`, 'error');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [navigate, showMessage]);
 
   const renderMessage = (msg) => {
     if (!msg.text) return null;

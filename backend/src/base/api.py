@@ -10,10 +10,11 @@ from django.db.models import DateField, DateTimeField, IntegerField, PositiveInt
 from datetime import datetime
 from django.http import HttpResponse
 import csv
+import re
 import io
 
-from .models import CsvColumnMapping, ModelDisplaySetting
-from .serializers import CsvColumnMappingSerializer, ModelDisplaySettingSerializer
+from .models import CsvColumnMapping, ModelDisplaySetting, QrCodeAction
+from .serializers import CsvColumnMappingSerializer, ModelDisplaySettingSerializer, QrCodeActionSerializer
 
 DATA_TYPE_MODEL_MAPPING = {
     'item': 'master.Item',
@@ -26,6 +27,7 @@ DATA_TYPE_MODEL_MAPPING = {
     'base_setting': 'base.BaseSetting',
     'csv_column_mapping': 'base.CsvColumnMapping',
     'model_display_setting': 'base.ModelDisplaySetting',
+    'qr_code_action': 'base.QrCodeAction',
 }
 
 class AppInfoView(APIView):
@@ -297,6 +299,78 @@ class CsvColumnMappingViewSet(viewsets.ModelViewSet):
         
         return Response({'status': 'success', 'message': final_message, 'created_count': created_count, 'updated_count': updated_count})
 
+
+class QrCodeActionViewSet(viewsets.ModelViewSet):
+    """
+    QRコードアクションを管理するためのAPIビューセット。
+    """
+    queryset = QrCodeAction.objects.all().order_by('name')
+    serializer_class = QrCodeActionSerializer
+    permission_classes = [permissions.IsAdminUser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_active']
+
+    @action(detail=False, methods=['post'], url_path='execute', permission_classes=[permissions.IsAuthenticated])
+    def execute_action(self, request, *args, **kwargs):
+        """
+        QRコードのデータを受け取り、マッチするアクションを実行する。
+        注意: スクリプトの実行はセキュリティリスクを伴います。
+              本番環境では、安全なサンドボックス環境で実行するか、
+              許可された関数のみを呼び出すように制限する必要があります。
+        """
+        qr_data = request.data.get('qr_data')
+        if not qr_data:
+            return Response({'error': 'qr_data is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        actions = QrCodeAction.objects.filter(is_active=True)
+        
+        for action in actions:
+            try:
+                if re.match(action.qr_code_pattern, qr_data):
+                    # **セキュリティ警告**: execの使用は非常に危険です。
+                    # これはあくまで概念実証のためのコードです。
+                    # 実際のアプリケーションでは、より安全な方法を検討してください。
+                    
+                    # スクリプトを関数内にラップして 'return' を使えるようにする
+                    # また、'result' 変数への代入による結果返却も引き続きサポートする
+                    script_body = '\n'.join([f'    {line}' for line in action.script.splitlines()])
+                    wrapped_script = f"""
+def run_action(qr_data):
+{script_body}
+    # スクリプト内で return が使われなかった場合、
+    # result 変数が定義されていればそれを返す
+    if 'result' in locals():
+        return result
+"""
+                    script_globals = {}
+                    # execで関数を定義
+                    exec(wrapped_script, script_globals)
+
+                    # 定義した関数を取得して実行
+                    action_func = script_globals['run_action']
+                    result = action_func(qr_data)
+
+                    # スクリプトが何も返さなかった場合のデフォルト値
+                    if result is None:
+                        result = 'Action executed successfully.'
+                    
+                    return Response({
+                        'status': 'success',
+                        'action_name': action.name,
+                        'result': result
+                    })
+            except re.error as e:
+                # パターンが無効な場合はログに記録するなど
+                # logger.warning(f"Invalid regex pattern for action '{action.name}': {e}")
+                continue
+            except Exception as e:
+                return Response({
+                    'status': 'error',
+                    'action_name': action.name,
+                    'message': f"An error occurred while executing action: {e}"
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'status': 'not_found', 'message': 'No matching action found for the given QR data.'}, status=status.HTTP_404_NOT_FOUND)
 
 class ModelDisplaySettingViewSet(viewsets.ModelViewSet):
     """
