@@ -5,8 +5,29 @@ import { getCookie } from '../utils/cookies';
 
 // This could be moved to a shared constants file
 const DATA_TYPE_CHOICES = [
-    { value: 'goods_receipt', label: '入庫処理' }, // This now represents combined fields from PurchaseOrder and GoodsReceipt
+    { value: 'goods_receipt', label: '入庫処理' },
+    { value: 'sales_order', label: '出庫処理' },
+    { value: 'inventory', label: '在庫照会' },
 ];
+
+const DATA_TYPE_MAP = {
+    goods_receipt: {
+        fetch: ['purchase_order', 'goods_receipt'],
+        save: ['goods_receipt'],
+        model_source_labels: {
+            purchase_order: '入庫予定',
+            goods_receipt: '入庫実績',
+        }
+    },
+    sales_order: {
+        fetch: ['sales_order'],
+        save: ['sales_order'],
+    },
+    inventory: {
+        fetch: ['inventory'],
+        save: ['inventory'],
+    }
+};
 
 const PageDisplaySettings = () => {
     const [fieldsData, setFieldsData] = useState([]);
@@ -21,61 +42,71 @@ const PageDisplaySettings = () => {
         setError(null);
         setSaveStatus(prev => ({ ...prev, show: false }));
         try {
-            let settings = [];
-            let modelFields = [];
-
-            // 「入庫処理」が選択された場合、入庫予定と入庫実績の両方のデータを取得して結合する
-            if (selectedType === 'goods_receipt') {
-                const dataTypesToFetch = ['purchase_order', 'goods_receipt'];
-                
-                const promises = dataTypesToFetch.flatMap(type => [
-                    fetch(`/api/base/model-display-settings/?data_type=${type}`),
-                    fetch(`/api/base/model-fields/?data_type=${type}`)
-                ]);
-
-                const responses = await Promise.all(promises);
-
-                for (const res of responses) {
-                    if (!res.ok) {
-                        const errorText = await res.text();
-                        throw new Error(`データの取得に失敗しました (${res.status} ${res.statusText}): ${errorText}`);
-                    }
-                }
-                
-                const results = await Promise.all(responses.map(res => res.json()));
-                
-                const poSettings = results[0];
-                const poFields = results[1];
-                const grSettings = results[2];
-                const grFields = results[3];
-
-                // 設定を結合
-                settings = [...poSettings, ...grSettings];
-                
-                // フィールドを結合（重複を排除し、どのモデル由来かを示す情報を付与）
-                const combinedFieldsMap = new Map();
-                poFields.forEach(field => {
-                    if (field.name !== 'id') {
-                        combinedFieldsMap.set(field.name, { ...field, model_source: '入庫予定' });
-                    }
-                });
-                grFields.forEach(field => {
-                    if (field.name !== 'id' && !combinedFieldsMap.has(field.name)) {
-                        combinedFieldsMap.set(field.name, { ...field, model_source: '入庫実績' });
-                    }
-                });
-                modelFields = Array.from(combinedFieldsMap.values());
+            const config = DATA_TYPE_MAP[selectedType];
+            if (!config) {
+                throw new Error(`設定されていないデータタイプです: ${selectedType}`);
             }
 
+            const dataTypesToFetch = config.fetch;
+
+            const promises = dataTypesToFetch.flatMap(type => [
+                fetch(`/api/base/model-display-settings/?data_type=${type}`),
+                fetch(`/api/base/model-fields/?data_type=${type}`)
+            ]);
+
+            const responses = await Promise.all(promises);
+
+            for (const res of responses) {
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`データの取得に失敗しました (${res.status} ${res.statusText}): ${errorText}`);
+                }
+            }
+            
+            const results = await Promise.all(responses.map(res => res.json()));
+            
+            let allSettings = [];
+            const combinedFieldsMap = new Map();
+
+            dataTypesToFetch.forEach((type, i) => {
+                const settings = results[i * 2];
+                const fields = results[i * 2 + 1];
+
+                allSettings.push(...settings.map(s => ({ ...s, source_data_type: type })));
+
+                fields.forEach(field => {
+                    if (field.name !== 'id' && !combinedFieldsMap.has(field.name)) {
+                        const modelSourceLabel = dataTypesToFetch.length > 1 ? (config.model_source_labels || {})[type] : null;
+                        combinedFieldsMap.set(field.name, { ...field, source_data_type: type, model_source_label: modelSourceLabel });
+                    }
+                });
+            });
+
+            // 既存の設定にしか存在しない項目（モデルのプロパティなど）を追加
+            allSettings.forEach(setting => {
+                if (!combinedFieldsMap.has(setting.model_field_name)) {
+                    // model-fields APIの結果になかった項目を、設定情報から復元する
+                    combinedFieldsMap.set(setting.model_field_name, {
+                        name: setting.model_field_name,
+                        verbose_name: setting.verbose_name || setting.model_field_name, // シリアライザからverbose_nameが返されることを期待
+                        help_text: '',
+                        source_data_type: setting.source_data_type,
+                        model_source_label: 'カスタム項目',
+                    });
+                }
+            });
+
+            const modelFields = Array.from(combinedFieldsMap.values());
+            
             const data = modelFields
                 .map((field, index) => {
-                const existingSetting = settings.find(s => s.model_field_name === field.name);
+                const existingSetting = allSettings.find(s => s.model_field_name === field.name);
 
                 return {
                     model_field_name: field.name,
-                    // 結合した場合、どのモデル由来か分かるように表示名を調整
-                    verbose_name: field.model_source ? `${field.verbose_name} (${field.model_source})` : field.verbose_name,
+                    verbose_name: field.model_source_label ? `${field.verbose_name} (${field.model_source_label})` : field.verbose_name,
                     help_text: field.help_text,
+                    source_data_type: field.source_data_type,
                     display_name: existingSetting?.display_name || '',
                     display_order: existingSetting?.display_order ?? (index + 1) * 10,
                     search_order: existingSetting?.search_order ?? (index + 1) * 10,
@@ -114,31 +145,45 @@ const PageDisplaySettings = () => {
         setIsSaving(true);
         setSaveStatus({ message: '', variant: '', show: false });
 
-        const payload = fieldsData.map(item => ({
-            model_field_name: item.model_field_name,
-            display_name: item.display_name,
-            display_order: Number(item.display_order) || 0,
-            search_order: Number(item.search_order) || 0,
-            is_list_display: item.is_list_display,
-            is_search_field: item.is_search_field,
-            is_list_filter: item.is_list_filter,
-        }));
-
         try {
-            const dataTypesToSave = selectedDataType === 'goods_receipt'
-                ? ['purchase_order', 'goods_receipt']
-                : [selectedDataType];
+            const config = DATA_TYPE_MAP[selectedDataType];
+            if (!config) {
+                throw new Error(`設定されていないデータタイプです: ${selectedDataType}`);
+            }
+            // ページに関連するすべてのデータタイプの設定を保存する
+            const dataTypesToSave = config.fetch;
 
-            const savePromises = dataTypesToSave.map(type =>
-                fetch(`/api/base/model-display-settings/bulk-save/?data_type=${type}`, {
+            const savePromises = dataTypesToSave.map(type => {
+                const payload = fieldsData
+                    .filter(item => item.source_data_type === type)
+                    .map(item => {
+                        const baseName = item.verbose_name.replace(/ \(.+\)$/, '');
+                        const displayName = item.display_name || baseName || item.verbose_name;
+                        return {
+                            model_field_name: item.model_field_name,
+                            display_name: displayName,
+                            display_order: Number(item.display_order) || 0,
+                            search_order: Number(item.search_order) || 0,
+                            is_list_display: item.is_list_display,
+                            is_search_field: item.is_search_field,
+                            is_list_filter: item.is_list_filter,
+                        };
+                    });
+
+                // このデータタイプに属するフィールドがなければ保存処理をスキップ
+                if (payload.length === 0) {
+                    return Promise.resolve({ ok: true, json: () => Promise.resolve({ message: '' }) });
+                }
+
+                return fetch(`/api/base/model-display-settings/bulk-save/?data_type=${type}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken'),
                     },
                     body: JSON.stringify(payload),
-                })
-            );
+                });
+            });
 
             const responses = await Promise.all(savePromises);
 
@@ -149,8 +194,8 @@ const PageDisplaySettings = () => {
                 throw new Error(errorResult.message || '保存に失敗しました。');
             }
 
-            const successResult = await responses[0].json();
-            setSaveStatus({ message: successResult.message || '設定を保存しました。', variant: 'success', show: true });
+            const successMessages = await Promise.all(responses.map(res => res.json().then(r => r.message)));
+            setSaveStatus({ message: successMessages.filter(Boolean).join(' ') || '設定を保存しました。', variant: 'success', show: true });
             fetchAllData(selectedDataType);
         } catch (err) {
             setSaveStatus({ message: err.message, variant: 'danger', show: true });
@@ -221,7 +266,12 @@ const PageDisplaySettings = () => {
                     </OverlayTrigger>
                 </td>
                 <td className="align-middle">
-                    <Form.Control type="text" value={item.display_name || item.verbose_name} readOnly plaintext />
+                    <Form.Control
+                        type="text"
+                        readOnly
+                        plaintext
+                        value={item.display_name || item.verbose_name.replace(/ \(.+\)$/, '') || item.verbose_name}
+                    />
                 </td>
                 <td className="text-center align-middle">
                     <Form.Check type="switch" id={`is_list_display-${type}-${originalIndex}`} name="is_list_display" checked={item.is_list_display} onChange={(e) => handleInputChange(originalIndex, e)} />
@@ -279,7 +329,7 @@ const PageDisplaySettings = () => {
     return (
         <Container fluid className="mt-4">
             <h2>ページ項目表示設定</h2>
-            <p>入庫処理ページの一覧に表示する項目や、検索・フィルタの対象をカスタマイズします。</p>
+            <p>各ページの一覧に表示する項目や、検索・フィルタの対象をカスタマイズします。</p>
 
             <Row className="my-3 p-3 bg-light border rounded align-items-center">
                 <Col md={4}>

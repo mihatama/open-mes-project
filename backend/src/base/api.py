@@ -12,6 +12,7 @@ from django.http import HttpResponse
 import csv
 import re
 import io
+import django_filters
 
 from .models import CsvColumnMapping, ModelDisplaySetting, QrCodeAction
 from .serializers import CsvColumnMappingSerializer, ModelDisplaySettingSerializer, QrCodeActionSerializer
@@ -22,6 +23,8 @@ DATA_TYPE_MODEL_MAPPING = {
     'warehouse': 'master.Warehouse',
     'purchase_order': 'inventory.PurchaseOrder',
     'goods_receipt': 'inventory.Receipt',
+    'sales_order': 'inventory.SalesOrder',
+    'inventory': 'inventory.Inventory',
     'production_plan': 'production.ProductionPlan',
     'parts_used': 'production.PartsUsed',
     'base_setting': 'base.BaseSetting',
@@ -44,6 +47,21 @@ class HealthCheckView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+
+class ModelDisplaySettingFilter(django_filters.FilterSet):
+    data_type = django_filters.ChoiceFilter(choices=[(k, k) for k in DATA_TYPE_MODEL_MAPPING.keys()])
+
+    class Meta:
+        model = ModelDisplaySetting
+        fields = ['data_type']
+
+class CsvColumnMappingFilter(django_filters.FilterSet):
+    data_type = django_filters.ChoiceFilter(choices=[(k, k) for k in DATA_TYPE_MODEL_MAPPING.keys()])
+
+    class Meta:
+        model = CsvColumnMapping
+        fields = ['data_type']
 
 
 class ModelFieldsView(APIView):
@@ -93,7 +111,7 @@ class CsvColumnMappingViewSet(viewsets.ModelViewSet):
     serializer_class = CsvColumnMappingSerializer
     permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['data_type']
+    filterset_class = CsvColumnMappingFilter
 
     def get_permissions(self):
         """
@@ -380,7 +398,7 @@ class ModelDisplaySettingViewSet(viewsets.ModelViewSet):
     serializer_class = ModelDisplaySettingSerializer
     permission_classes = [permissions.IsAdminUser]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['data_type']
+    filterset_class = ModelDisplaySettingFilter
 
     @action(detail=False, methods=['post'], url_path='bulk-save')
     def bulk_save(self, request, *args, **kwargs):

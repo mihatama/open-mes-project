@@ -3,73 +3,21 @@ import { Container, Table, Button, Modal, Form, Spinner, Alert, Row, Col } from 
 import { getCookie } from '../utils/cookies';
 
 const ACTION_TEMPLATES = {
-    goods_receipt_search: {
-        name: 'モバイル入庫 (検索)',
-        description: 'QRコードから品番や発注番号を読み取り、モバイル入庫画面で検索します。',
+    mobile_goods_receipt: {
+        name: 'モバイル入庫処理',
+        description: 'QRコードから品番や発注番号を読み取り、モバイル入庫画面の検索フィールドに入力します。',
         qr_code_pattern: '(^ITEM-.+|^PO-.+)',
-        script: `# This script tells the frontend to perform a search on the Goods Receipt page.
-# The value of 'updateSearch' will be used as the search term.
+        script: `# QRコードのデータをそのままモバイル入庫画面の検索クエリとして渡します。
+# 'navigate' キーで指定したパスに遷移し、'state' を渡すことができます。
+# 辞書を return することで、フロントエンド側で処理を分岐させます。
 return {
-    "action": "update_search",
-    "updateSearch": qr_data
-}`,
-        is_active: true,
-    },
-    goods_issue_search: {
-        name: 'モバイル出庫 (検索)',
-        description: 'QRコードから受注番号等を読み取り、モバイル出庫画面で検索します。',
-        qr_code_pattern: '(^SO-.+)',
-        script: `# This script tells the frontend to perform a search on the Goods Issue page.
-# The value of 'updateSearch' will be used as the search term.
-return {
-    "action": "update_search",
-    "updateSearch": qr_data
-}`,
-        is_active: true,
-    },
-    location_transfer_source: {
-        name: '棚番移動 (移動元入力)',
-        description: 'QRコードから棚番を読み取り、棚番移動画面の「移動元棚番」を更新します。',
-        qr_code_pattern: '(^LOC-.+)',
-        script: `# This script tells the frontend to update a form field.
-# The 'payload' dictionary contains the field names and their new values.
-return {
-    "action": "update_fields",
-    "payload": {
-        "sourceLocation": qr_data
+    "navigate": "/mobile/goods-receipt",
+    "state": {
+        "searchQuery": qr_data
     }
 }`,
         is_active: true,
     },
-    location_transfer_target: {
-        name: '棚番移動 (移動先入力)',
-        description: 'QRコードから棚番を読み取り、棚番移動画面の「移動先棚番」を更新します。',
-        qr_code_pattern: '(^LOC-.+)',
-        script: `# This script tells the frontend to update a form field in the modal.
-# The 'payload' dictionary contains the field names and their new values.
-return {
-    "action": "update_fields",
-    "payload": {
-        "targetLocation": qr_data
-    }
-}`,
-        is_active: true,
-    },
-    custom: {
-        name: 'カスタム...',
-        description: '独自のアクションを定義します。',
-        qr_code_pattern: '',
-        script: `# qr_data 変数にスキャンしたQRコードの文字列が格納されます。
-# 返却する辞書の内容に応じて、フロントエンドの動作が変わります。
-#
-# action: "navigate", navigate: "/path", state: { ... } -> ページ遷移
-# action: "update_search", updateSearch: "keyword"      -> 検索実行
-# action: "update_fields", payload: { "field": "value" } -> フィールド更新
-# action: "goods_receipt", payload: { ... }             -> 入庫処理開始
-# action: "goods_issue", payload: { ... }               -> 出庫処理開始
-`,
-        is_active: true,
-    }
 };
 
 const QrCodeActionSettings = () => {
@@ -111,11 +59,7 @@ const QrCodeActionSettings = () => {
         } else {
             // Creating a new action
             setCurrentAction({
-                name: '',
-                description: '',
-                qr_code_pattern: '',
-                script: `# テンプレートを選択するか、手動で入力してください。\n# qr_data 変数にスキャンしたQRコードの文字列が格納されます。`,
-                is_active: true,
+                ...ACTION_TEMPLATES.mobile_goods_receipt,
             });
         }
         setFormErrors({});
@@ -133,17 +77,6 @@ const QrCodeActionSettings = () => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
-    };
-
-    const handleTemplateChange = (e) => {
-        const templateKey = e.target.value;
-        if (templateKey && ACTION_TEMPLATES[templateKey]) {
-            const template = ACTION_TEMPLATES[templateKey];
-            setCurrentAction(prev => ({
-                ...prev, // is_activeなどの状態を維持
-                ...template,
-            }));
-        }
     };
 
     const handleSave = async (e) => {
@@ -246,21 +179,6 @@ const QrCodeActionSettings = () => {
                         </Modal.Header>
                         <Modal.Body>
                             {formErrors.non_field_errors && <Alert variant="danger">{formErrors.non_field_errors}</Alert>}
-
-                            {!currentAction.id && (
-                                <Form.Group as={Row} className="mb-3" controlId="formTemplate">
-                                    <Form.Label column sm={3}>テンプレート</Form.Label>
-                                    <Col sm={9}>
-                                        <Form.Select onChange={handleTemplateChange} defaultValue="">
-                                            <option value="" disabled>テンプレートを選択...</option>
-                                            {Object.entries(ACTION_TEMPLATES).map(([key, template]) => (
-                                                <option key={key} value={key}>{template.name}</option>
-                                            ))}
-                                        </Form.Select>
-                                        <Form.Text>テンプレートを選択すると、以下の項目が自動入力されます。</Form.Text>
-                                    </Col>
-                                </Form.Group>
-                            )}
 
                             <Form.Group as={Row} className="mb-3" controlId="formName">
                                 <Form.Label column sm={3}>アクション名</Form.Label>

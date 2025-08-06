@@ -90,8 +90,8 @@ class ModelDisplaySettingSerializer(serializers.ModelSerializer):
                 continue
 
         # モデルフィールドに見つからなかった場合、プロパティをチェック
-        if obj.model_field_name == 'remaining_quantity': return '残数量'
-        if obj.model_field_name == 'received_quantity': return '入庫済数量'
+        if obj.data_type == 'goods_receipt' and obj.model_field_name == 'remaining_quantity': return '残数量'
+        if obj.data_type == 'inventory' and obj.model_field_name == 'available_quantity': return '利用可能数'
         
         # それでも見つからなければフィールド名をそのまま返す
         return obj.model_field_name

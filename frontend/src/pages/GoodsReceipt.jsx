@@ -47,20 +47,25 @@ const GoodsReceipt = () => {
       }
       dataApiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
     }
-    
-    const settingsUrl = '/api/base/model-display-settings/?data_type=goods_receipt';
+
+    // 「入庫処置」ページは入庫予定(purchase_order)と入庫実績(goods_receipt)の両方の設定を参照する
+    const poSettingsUrl = '/api/base/model-display-settings/?data_type=purchase_order';
+    const grSettingsUrl = '/api/base/model-display-settings/?data_type=goods_receipt';
     const poFieldsUrl = '/api/base/model-fields/?data_type=purchase_order';
     const grFieldsUrl = '/api/base/model-fields/?data_type=goods_receipt';
 
     try {
-      const [settingsResponse, dataResponse, poFieldsResponse, grFieldsResponse] = await Promise.all([
-        fetch(settingsUrl),
+      const [poSettingsResponse, grSettingsResponse, dataResponse, poFieldsResponse, grFieldsResponse] = await Promise.all([
+        fetch(poSettingsUrl),
+        fetch(grSettingsUrl),
         fetch(dataApiUrl),
         fetch(poFieldsUrl),
         fetch(grFieldsUrl),
       ]);
 
       // レスポンスのJSONボディは一度しか読み取れないため、先にパースして変数に格納します
+      const poSettings = poSettingsResponse.ok ? await poSettingsResponse.json() : [];
+      const grSettings = grSettingsResponse.ok ? await grSettingsResponse.json() : [];
       const poFields = poFieldsResponse.ok ? await poFieldsResponse.json() : [];
       const grFields = grFieldsResponse.ok ? await grFieldsResponse.json() : [];
 
@@ -79,11 +84,20 @@ const GoodsReceipt = () => {
           }
       });
 
-      if (settingsResponse.ok) {
-        const settings = await settingsResponse.json();
-        
-        // settings に verbose_name を追加
-        const combinedSettings = settings.map(setting => ({
+      if (poSettingsResponse.ok && grSettingsResponse.ok) {
+        // 両方の設定をマージする。同じフィールド名がある場合は入庫実績(grSettings)を優先する
+        const settingsMap = new Map();
+        poSettings.forEach(setting => {
+            settingsMap.set(setting.model_field_name, setting);
+        });
+        grSettings.forEach(setting => {
+            settingsMap.set(setting.model_field_name, setting);
+        });
+
+        const mergedSettings = Array.from(settingsMap.values());
+
+        // マージした設定に verbose_name と field_type を追加
+        const combinedSettings = mergedSettings.map(setting => ({
             ...setting,
             verbose_name: verboseNameMap.get(setting.model_field_name) || setting.model_field_name,
             field_type: fieldTypeMap.get(setting.model_field_name) || 'Unknown',

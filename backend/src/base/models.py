@@ -6,9 +6,11 @@ from django.utils.translation import gettext_lazy as _
 # 共通のデータ種別選択肢
 DATA_TYPE_CHOICES = [
     ('item', _('品番マスター')),
+    ('inventory', _('在庫')),
     ('supplier', _('サプライヤーマスター')),
     ('warehouse', _('倉庫マスター')),
     ('purchase_order', _('入庫予定')),
+    ('sales_order', _('出庫予定')),
     ('goods_receipt', _('入庫実績')),
     ('production_plan', _('生産計画')),
     ('parts_used', _('使用部品')),
@@ -21,9 +23,11 @@ DATA_TYPE_CHOICES = [
 # APIなどでモデル文字列とモデルクラスをマッピングするために使用
 DATA_TYPE_MODEL_MAPPING = {
     'item': 'master.Item',
+    'inventory': 'inventory.Inventory',
     'supplier': 'master.Supplier',
     'warehouse': 'master.Warehouse',
     'purchase_order': 'inventory.PurchaseOrder',
+    'sales_order': 'inventory.SalesOrder',
     'goods_receipt': 'inventory.Receipt',
     'production_plan': 'production.ProductionPlan',
     'parts_used': 'production.PartsUsed',

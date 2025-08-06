@@ -15,12 +15,12 @@ const InventoryInquiry = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [displaySettings, setDisplaySettings] = useState([]);
+  const [searchFields, setSearchFields] = useState([]);
 
   // State for search filters
   const [filters, setFilters] = useState({
-    partNumber: '',
-    warehouse: '',
-    location: '',
+    // part_number, warehouse, location will be added dynamically
     hideZeroStock: true,
   });
 
@@ -43,21 +43,54 @@ const InventoryInquiry = () => {
       apiUrl = pageUrl;
     } else {
       const params = new URLSearchParams();
-      if (filters.partNumber) params.append('part_number_query', filters.partNumber);
-      if (filters.warehouse) params.append('warehouse_query', filters.warehouse);
-      if (filters.location) params.append('location_query', filters.location);
+      for (const [key, value] of Object.entries(filters)) {
+        if (key !== 'hideZeroStock' && value) {
+          params.append(`${key}_query`, value);
+        }
+      }
       params.append('hide_zero_stock_query', filters.hideZeroStock);
       apiUrl = `/api/inventory/inventories/?${params.toString()}`;
     }
 
+    const settingsUrl = '/api/base/model-display-settings/?data_type=inventory';
+    const fieldsUrl = '/api/base/model-fields/?data_type=inventory';
+
     try {
-      const response = await fetch(apiUrl, {
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error(`Network response was not ok: ${response.statusText}`);
+      const [settingsResponse, fieldsResponse, dataResponse] = await Promise.all([
+        fetch(settingsUrl),
+        fetch(fieldsUrl),
+        fetch(apiUrl, { credentials: 'include' })
+      ]);
+
+      if (settingsResponse.ok && fieldsResponse.ok) {
+        const settings = await settingsResponse.json();
+        const fields = await fieldsResponse.json();
+        const verboseNameMap = new Map(fields.map(f => [f.name, f.verbose_name]));
+
+        const combinedSettings = settings.map(setting => ({
+          ...setting,
+          verbose_name: verboseNameMap.get(setting.model_field_name) || setting.model_field_name,
+        }));
+
+        const visibleColumns = combinedSettings
+          .filter(s => s.is_list_display)
+          .sort((a, b) => a.display_order - b.display_order);
+        setDisplaySettings(visibleColumns);
+
+        const searchableFields = combinedSettings
+          .filter(s => s.is_search_field)
+          .sort((a, b) => a.search_order - b.search_order);
+        setSearchFields(searchableFields);
+      } else {
+        console.error('表示設定の取得に失敗しました。');
+        setDisplaySettings([]);
+        setSearchFields([]);
       }
-      const data = await response.json();
+
+      if (!dataResponse.ok) {
+        throw new Error(`Network response was not ok: ${dataResponse.statusText}`);
+      }
+      const data = await dataResponse.json();
       setInventory(data.results);
       setPagination({
         count: data.count,
@@ -159,18 +192,18 @@ const InventoryInquiry = () => {
         credentials: 'include',
       });
       const result = await response.json();
-      if (result.success) {
+      if (response.ok) {
         setModifyModal(prev => ({ ...prev, success: result.message || '在庫を更新しました。' }));
         setTimeout(() => {
           closeModifyModal();
           fetchInventory(); // Refresh data
         }, 1500);
       } else {
-        setModifyModal(prev => ({ ...prev, error: result.error || '在庫の更新に失敗しました。' }));
+        setModifyModal(prev => ({ ...prev, error: result.error || result.detail || '在庫の更新に失敗しました。' }));
       }
     } catch (err) {
       console.error('Error submitting inventory update:', err);
-      setModifyModal(prev => ({ ...prev, error: '在庫更新中に通信エラーが発生しました。' }));
+      setModifyModal(prev => ({ ...prev, error: err.message || '在庫更新中に通信エラーが発生しました。' }));
     }
   };
 
@@ -215,27 +248,73 @@ const InventoryInquiry = () => {
     }
   };
 
+  // Render logic for table headers
+  const renderTableHeaders = () => {
+    const defaultHeaders = (
+      <tr>
+        <th>製品/材料名</th>
+        <th>倉庫</th>
+        <th>場所</th>
+        <th className="text-end">在庫数</th>
+        <th className="text-end">引当在庫</th>
+        <th className="text-end">利用可能数</th>
+        <th>最終更新日時</th>
+        <th className="text-center">操作</th>
+      </tr>
+    );
+
+    if (isLoading || displaySettings.length === 0) {
+      return defaultHeaders;
+    }
+
+    return (
+      <tr>
+        {displaySettings.map(setting => {
+          const isNumeric = ['quantity', 'reserved', 'available_quantity'].includes(setting.model_field_name);
+          const headerText = (setting.display_name || '').trim() || setting.verbose_name || setting.model_field_name;
+          return (
+            <th key={setting.model_field_name} className={isNumeric ? 'text-end' : ''}>
+              {headerText}
+            </th>
+          );
+        })}
+        <th className="text-center">操作</th>
+      </tr>
+    );
+  };
+
   // Render logic for table body
   const renderTableBody = () => {
-    if (isLoading) return <tr><td colSpan="8" className="text-center">検索中...</td></tr>;
-    if (error) return <tr><td colSpan="8" className="text-center text-danger">{error}</td></tr>;
-    if (inventory.length === 0) return <tr><td colSpan="8" className="text-center">該当する在庫情報がありません。</td></tr>;
+    const colSpan = displaySettings.length > 0 ? displaySettings.length + 1 : 8;
+    if (isLoading) return <tr><td colSpan={colSpan} className="text-center">検索中...</td></tr>;
+    if (error) return <tr><td colSpan={colSpan} className="text-center text-danger">{error}</td></tr>;
+    if (inventory.length === 0) return <tr><td colSpan={colSpan} className="text-center">該当する在庫情報がありません。</td></tr>;
 
-    return inventory.map(item => (
-      <tr key={item.id}>
-        <td>{item.part_number || 'N/A'}</td>
-        <td>{item.warehouse || 'N/A'}</td>
-        <td>{item.location || '-'}</td>
-        <td className="text-end">{item.quantity}</td>
-        <td className="text-end">{item.reserved}</td>
-        <td className="text-end">{item.available_quantity}</td>
-        <td>{item.last_updated ? new Date(item.last_updated).toLocaleString() : 'N/A'}</td>
-        <td className="text-center">
-          <button className="btn btn-sm btn-info ms-1" onClick={() => openMoveModal(item)}>移動</button>
-          <button className="btn btn-sm btn-warning ms-1" onClick={() => openModifyModal(item)}>修正</button>
-        </td>
-      </tr>
-    ));
+    return inventory.map(item => {
+      const cells = displaySettings.map(setting => {
+        const fieldName = setting.model_field_name;
+        let cellValue = item[fieldName];
+
+        if (fieldName === 'last_updated') {
+          cellValue = cellValue ? new Date(cellValue).toLocaleString() : 'N/A';
+        }
+
+        const isNumeric = ['quantity', 'reserved', 'available_quantity'].includes(fieldName);
+        const className = isNumeric ? 'text-end' : '';
+
+        return <td key={fieldName} className={className}>{cellValue ?? 'N/A'}</td>;
+      });
+
+      return (
+        <tr key={item.id}>
+          {cells}
+          <td className="text-center">
+            <button className="btn btn-sm btn-info ms-1" onClick={() => openMoveModal(item)}>移動</button>
+            <button className="btn btn-sm btn-warning ms-1" onClick={() => openModifyModal(item)}>修正</button>
+          </td>
+        </tr>
+      );
+    });
   };
 
   return (
@@ -244,9 +323,18 @@ const InventoryInquiry = () => {
 
       {/* Filters */}
       <div className="inventory-filters d-flex flex-wrap gap-2 align-items-center mb-3">
-        <input type="text" name="partNumber" value={filters.partNumber} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="製品/材料名で検索..." />
-        <input type="text" name="warehouse" value={filters.warehouse} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="倉庫で検索..." />
-        <input type="text" name="location" value={filters.location} onChange={handleFilterChange} className="form-control" style={{ width: 'auto', flexGrow: 1 }} placeholder="場所で検索..." />
+        {searchFields.map(field => (
+          <input
+            key={field.model_field_name}
+            type="text"
+            name={field.model_field_name}
+            value={filters[field.model_field_name] || ''}
+            onChange={handleFilterChange}
+            className="form-control"
+            style={{ width: 'auto', flexGrow: 1 }}
+            placeholder={`${field.display_name || field.verbose_name}で検索...`}
+          />
+        ))}
         <label className="form-check-label ms-2">
           <input type="checkbox" name="hideZeroStock" checked={filters.hideZeroStock} onChange={handleFilterChange} className="form-check-input" /> 在庫有
         </label>
@@ -257,16 +345,7 @@ const InventoryInquiry = () => {
       <div className="table-responsive">
         <table className="table table-striped table-bordered table-hover mb-0">
           <thead>
-            <tr>
-              <th>製品/材料名</th>
-              <th>倉庫</th>
-              <th>場所</th>
-              <th className="text-end">在庫数</th>
-              <th className="text-end">引当在庫</th>
-              <th className="text-end">利用可能数</th>
-              <th>最終更新日時</th>
-              <th className="text-center">操作</th>
-            </tr>
+            {renderTableHeaders()}
           </thead>
           <tbody>{renderTableBody()}</tbody>
         </table>
