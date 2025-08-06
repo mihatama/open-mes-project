@@ -1,13 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+const allowedHostsFromEnv = process.env.ALLOWED_HOSTS
+  ? process.env.ALLOWED_HOSTS.split(',')
+  : [];
+
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   server: {
     // Dockerコンテナ外や他のマシンからアクセスできるようにホストを0.0.0.0に設定
     host: '0.0.0.0',
-    // Vite開発サーバーにアクセスを許可するホストのリスト
-    allowedHosts: ['*'],
+    // '*' は常に許可し、.envファイルから読み込んだホストも追加する
+    allowedHosts: ['*', ...allowedHostsFromEnv],
     proxy: {
       // DjangoバックエンドへのAPIリクエストをプロキシする設定
       // /api で始まるリクエストのみをバックエンドに転送する
@@ -15,6 +19,6 @@ export default defineConfig({
         target: 'http://backend:8000',
         changeOrigin: true,
       },
-    }
-  }
-})
+    },
+  },
+}));

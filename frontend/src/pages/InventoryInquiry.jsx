@@ -91,7 +91,23 @@ const InventoryInquiry = () => {
         throw new Error(`Network response was not ok: ${dataResponse.statusText}`);
       }
       const data = await dataResponse.json();
-      setInventory(data.results);
+      const inventoryResults = data.results || [];
+
+      // 品番マスターから品名を取得してマージする
+      if (inventoryResults.length > 0) {
+        const partNumbers = [...new Set(inventoryResults.map(item => item.part_number).filter(Boolean))];
+        if (partNumbers.length > 0) {
+          const itemsUrl = `/api/master/items/?code__in=${partNumbers.join(',')}`;
+          const itemsResponse = await fetch(itemsUrl, { credentials: 'include' });
+          if (itemsResponse.ok) {
+            const itemsData = await itemsResponse.json();
+            const items = itemsData.results || itemsData.data || itemsData || [];
+            const partNameMap = new Map(items.map(item => [item.code, item.name]));
+            inventoryResults.forEach(inv => { inv.part_name = partNameMap.get(inv.part_number) || ''; });
+          }
+        }
+      }
+      setInventory(inventoryResults);
       setPagination({
         count: data.count,
         next: data.next,

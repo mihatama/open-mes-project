@@ -96,6 +96,17 @@ const PageDisplaySettings = () => {
                 }
             });
 
+            // 在庫照会ページの場合、手動で 'part_name' (品名) を設定項目として追加
+            if (selectedType === 'inventory' && !combinedFieldsMap.has('part_name')) {
+                combinedFieldsMap.set('part_name', {
+                    name: 'part_name',
+                    verbose_name: '品名',
+                    help_text: '品番マスターから自動的に取得される品名です。',
+                    source_data_type: 'inventory', // 'inventory' スコープとして扱う
+                    model_source_label: '品番マスター',
+                });
+            }
+
             const modelFields = Array.from(combinedFieldsMap.values());
             
             const data = modelFields
