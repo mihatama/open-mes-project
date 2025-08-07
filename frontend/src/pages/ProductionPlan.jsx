@@ -37,7 +37,13 @@ const ProductionPlan = () => {
   // Build search query from filters
   const buildSearchQuery = useCallback((pageUrl = null) => {
     if (pageUrl) {
-      return pageUrl;
+      try {
+        // APIが返す完全なURLから、ホスト名を除いたパス部分だけを取得する
+        const url = new URL(pageUrl);
+        return url.pathname + url.search;
+      } catch (e) {
+        return pageUrl; // パースに失敗した場合はそのまま使用
+      }
     }
     const params = new URLSearchParams();
     params.append('page_size', pageSize.toString());
@@ -58,7 +64,7 @@ const ProductionPlan = () => {
     const url = buildSearchQuery(pageUrl);
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { credentials: 'include' });
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }

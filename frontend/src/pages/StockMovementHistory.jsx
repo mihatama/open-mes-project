@@ -67,7 +67,7 @@ const StockMovementHistory = () => {
         });
 
         try {
-            const response = await fetch(url);
+            const response = await fetch(url, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -184,7 +184,7 @@ const StockMovementHistory = () => {
                 <nav aria-label="Page navigation">
                     <ul className="pagination mb-0">
                         <li className={`page-item ${!pagination.previous ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => handlePageChange(pagination.previous)} aria-label="Previous">
+                            <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} aria-label="Previous">
                                 <span aria-hidden="true">&laquo;</span>
                             </button>
                         </li>
@@ -194,7 +194,7 @@ const StockMovementHistory = () => {
                             </li>
                         ))}
                         <li className={`page-item ${!pagination.next ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => handlePageChange(pagination.next)} aria-label="Next">
+                            <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} aria-label="Next">
                                 <span aria-hidden="true">&raquo;</span>
                             </button>
                         </li>

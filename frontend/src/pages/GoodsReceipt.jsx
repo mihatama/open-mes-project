@@ -36,7 +36,13 @@ const GoodsReceipt = () => {
 
     let dataApiUrl;
     if (pageUrl) {
-      dataApiUrl = pageUrl;
+      try {
+        // APIが返す完全なURLから、ホスト名を除いたパス部分だけを取得する
+        const url = new URL(pageUrl);
+        dataApiUrl = url.pathname + url.search;
+      } catch (e) {
+        dataApiUrl = pageUrl; // パースに失敗した場合はそのまま使用
+      }
     } else {
       const params = new URLSearchParams();
       // Dynamic filter parameter construction
@@ -56,11 +62,11 @@ const GoodsReceipt = () => {
 
     try {
       const [poSettingsResponse, grSettingsResponse, dataResponse, poFieldsResponse, grFieldsResponse] = await Promise.all([
-        fetch(poSettingsUrl),
-        fetch(grSettingsUrl),
-        fetch(dataApiUrl),
-        fetch(poFieldsUrl),
-        fetch(grFieldsUrl),
+        fetch(poSettingsUrl, { credentials: 'include' }),
+        fetch(grSettingsUrl, { credentials: 'include' }),
+        fetch(dataApiUrl, { credentials: 'include' }),
+        fetch(poFieldsUrl, { credentials: 'include' }),
+        fetch(grFieldsUrl, { credentials: 'include' }),
       ]);
 
       // レスポンスのJSONボディは一度しか読み取れないため、先にパースして変数に格納します
@@ -119,7 +125,7 @@ const GoodsReceipt = () => {
           .filter(field => field.field_type === 'CharField') // CharFieldのみ対象
           .map(async (field) => {
               try {
-                  const res = await fetch(`/api/inventory/purchase-orders/distinct-values/?field=${field.model_field_name}`);
+                  const res = await fetch(`/api/inventory/purchase-orders/distinct-values/?field=${field.model_field_name}`, { credentials: 'include' });
                   if (res.ok) {
                       const data = await res.json();
                       newOptions[field.model_field_name] = data;
@@ -226,6 +232,7 @@ const GoodsReceipt = () => {
           location: receiptFormData.location.trim(),
           warehouse: receiptFormData.warehouse.trim(),
         }),
+        credentials: 'include',
       });
       const result = await response.json();
       if (response.ok) {
@@ -385,7 +392,8 @@ const GoodsReceipt = () => {
         <select name="status" value={filters.status} onChange={handleFilterChange} className="form-select" style={{ width: 'auto' }}>
             <option value="">全てのステータス</option>
             <option value="pending">未入庫</option>
-            <option value="received">入庫済み</option>
+            <option value="partially_received">一部入庫</option>
+            <option value="fully_received">全量入庫済み</option>
             <option value="canceled">キャンセル</option>
         </select>
         <button onClick={handleSearch} className="btn btn-primary">検索</button>

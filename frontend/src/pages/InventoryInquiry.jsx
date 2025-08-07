@@ -40,7 +40,13 @@ const InventoryInquiry = () => {
     let apiUrl;
     if (pageUrl) {
       // Use the full URL provided by the API for next/previous pages
-      apiUrl = pageUrl;
+      try {
+        // APIが返す完全なURLから、ホスト名を除いたパス部分だけを取得する
+        const url = new URL(pageUrl);
+        apiUrl = url.pathname + url.search;
+      } catch (e) {
+        apiUrl = pageUrl; // パースに失敗した場合はそのまま使用
+      }
     } else {
       const params = new URLSearchParams();
       for (const [key, value] of Object.entries(filters)) {
