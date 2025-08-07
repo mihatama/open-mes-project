@@ -11,8 +11,10 @@
 - **管理者でログインできない**:
   `createsuperuser`で設定したパスワードが間違っている可能性があります。もう一度`docker compose exec open_mes python3 manage.py createsuperuser`を実行し、新しい管理者を作成してみてください。既存ユーザーのパスワードリセットには`manage.py changepassword ユーザー名`コマンドも使えます。
 
-- **ページを開いた際にCSRFエラー**:
-  `.env`で`CSRF_TRUSTED_ORIGINS`を`*`に設定しているにも関わらずエラーが出る場合、アクセスURLにポート番号付きのホスト等が含まれていないか確認します（DjangoのCSRF設定は厳密にチェックするため、例えば`localhost:8000`でアクセスするなら`http://localhost:8000`を`CSRF_TRUSTED_ORIGINS`に含める必要があります）。開発時は一時的にCSRF検証を無効にする手もありますが、推奨されません。
+- **ページを開いた際にCSRFエラー (Origin checking failed)**:
+  これは、アクセス元のURLが信頼できるオリジンとして登録されていない場合に発生します。`.env` ファイルの `CSRF_TRUSTED_ORIGINS` に、ブラウザでアクセスしているURL（スキーマ`http://`または`https://`からポート番号まで全て）を正確に記述してください。
+  例えば、`http://example.com:8000` でアクセスしている場合は、`CSRF_TRUSTED_ORIGINS="http://example.com:8000"` のように設定します。複数のオリジンを許可する場合はカンマで区切ります。
+  なお、`*`（ワイルドカード）はこの設定では機能しないため、必ず具体的なURLを指定する必要があります。
 
 - **メール送信ができない**:
   パスワードリセット機能等でメールを送ろうとした場合、デフォルトではメールサーバ設定が行われていないため送信に失敗します。本番運用時には`.env`にメールサーバ（SMTP）の設定を追加してください。開発中はDjangoのコンソールメールバックエンドを使うか、`python manage.py sendtestemail`で動作確認できます。

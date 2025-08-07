@@ -27,17 +27,38 @@ class CustomAuthTokenSerializer(serializers.Serializer):
     def validate(self, attrs):
         custom_id = attrs.get('custom_id')
         password = attrs.get('password')
+        UserModel = get_user_model()
 
-        if custom_id and password:
-            user = authenticate(request=self.context.get('request'),
-                                custom_id=custom_id, password=password)
-
-            if not user:
-                msg = _('提供された認証情報でログインできません。')
-                raise serializers.ValidationError(msg, code='authorization')
-        else:
+        if not (custom_id and password):
             msg = _('"custom_id" と "password" を含める必要があります。')
             raise serializers.ValidationError(msg, code='authorization')
+
+        # Djangoの標準認証関数を使用
+        user = authenticate(request=self.context.get('request'),
+                            username=custom_id, password=password)
+
+        # authenticateがNoneを返した場合、ログイン失敗の理由を特定する
+        if not user:
+            try:
+                # ユーザーが存在するかどうかを確認
+                user_obj = UserModel.objects.get(custom_id=custom_id)
+
+                # ユーザーは存在するが、パスワードが違うか、アカウントが無効
+                if not user_obj.check_password(password):
+                    msg = _('パスワードが正しくありません。')
+                    raise serializers.ValidationError(msg, code='authorization')
+                elif not user_obj.is_active:
+                    msg = _('このアカウントは無効化されています。')
+                    raise serializers.ValidationError(msg, code='authorization')
+                else:
+                    # その他の理由で認証に失敗した場合
+                    msg = _('提供された認証情報でログインできません。')
+                    raise serializers.ValidationError(msg, code='authorization')
+
+            except UserModel.DoesNotExist:
+                # ユーザーID自体が存在しない
+                msg = _('指定されたIDのユーザーは存在しません。')
+                raise serializers.ValidationError(msg, code='authorization')
 
         attrs['user'] = user
         return attrs

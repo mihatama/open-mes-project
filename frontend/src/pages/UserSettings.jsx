@@ -41,24 +41,35 @@ const UserSettings = () => {
     setLoading(true);
     setError('');
     try {
-      // NOTE: This assumes an API endpoint to get current user's settings data
-      const response = await fetch('/api/users/settings/', {
-        headers: {
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'ユーザーデータの読み込みに失敗しました。' }));
+      const [profileRes, tokenRes] = await Promise.all([
+        fetch('/api/users/settings/', {
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include',
+        }),
+        fetch('/api/users/settings/token/', {
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include',
+        })
+      ]);
+
+      if (!profileRes.ok) {
+        const errorData = await profileRes.json().catch(() => ({ detail: 'ユーザーデータの読み込みに失敗しました。' }));
         throw new Error(errorData.detail || 'ユーザーデータの読み込みに失敗しました。');
       }
-      const data = await response.json();
+      const profileData = await profileRes.json();
       setProfileForm({
-        username: data.username || '',
-        email: data.email || '',
-        custom_id: data.custom_id || '',
+        username: profileData.username || '',
+        email: profileData.email || '',
+        custom_id: profileData.custom_id || '',
       });
-      setApiToken(data.api_token || null);
+
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json();
+        setApiToken(tokenData.api_token || null);
+      } else {
+        console.warn("APIトークンの取得に失敗しました。");
+        setApiToken(null);
+      }
     } catch (e) {
       setError(e.message);
       console.error("Fetch user data error:", e);
@@ -88,17 +99,16 @@ const UserSettings = () => {
     setProfileErrors({});
     const csrfToken = getCookie('csrftoken');
     try {
-      // Backend expects a single endpoint with form_type
       const response = await fetch('/api/users/settings/', {
-        method: 'POST',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
           'Accept': 'application/json',
         },
         body: JSON.stringify({
-          ...profileForm,
-          form_type: 'profile',
+          username: profileForm.username,
+          email: profileForm.email,
         }),
         credentials: 'include',
       });
@@ -120,18 +130,14 @@ const UserSettings = () => {
     setPasswordErrors({});
     const csrfToken = getCookie('csrftoken');
     try {
-      // Backend expects a single endpoint with form_type
-      const response = await fetch('/api/users/settings/', {
+      const response = await fetch('/api/users/settings/password/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          ...passwordForm,
-          form_type: 'password_change',
-        }),
+        body: JSON.stringify(passwordForm),
         credentials: 'include',
       });
       const data = await response.json();
@@ -155,18 +161,13 @@ const UserSettings = () => {
     }
     const csrfToken = getCookie('csrftoken');
     try {
-      // Backend expects a single endpoint with form_type
-      const response = await fetch('/api/users/settings/', {
+      const response = await fetch('/api/users/settings/token/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          form_type: 'api_token',
-          regenerate_token: true,
-        }),
         credentials: 'include',
       });
       const data = await response.json();
@@ -224,7 +225,7 @@ const UserSettings = () => {
             <div className="row mb-3">
               <label htmlFor="custom_id" className="col-sm-3 col-form-label fw-bold">専用ID</label>
               <div className="col-sm-9">
-                <input type="text" id="custom_id" name="custom_id" className={`form-control ${profileErrors.custom_id ? 'is-invalid' : ''}`} value={profileForm.custom_id} onChange={handleProfileChange} required />
+                <input type="text" id="custom_id" name="custom_id" className="form-control" value={profileForm.custom_id} readOnly disabled />
                 {profileErrors.custom_id && <div className="invalid-feedback">{profileErrors.custom_id.join(' ')}</div>}
               </div>
             </div>

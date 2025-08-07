@@ -112,18 +112,12 @@ pip install -r ./open_mes/image/requirements.txt
 
 ## 初回は下記コマンドを実行
 ```
-docker compose exec -it open_mes python3 manage.py makemigrations base
-docker compose exec -it open_mes python3 manage.py makemigrations inventory
-docker compose exec -it open_mes python3 manage.py makemigrations machine
-docker compose exec -it open_mes python3 manage.py makemigrations master
-docker compose exec -it open_mes python3 manage.py makemigrations production
-docker compose exec -it open_mes python3 manage.py makemigrations quality
-docker compose exec -it open_mes python3 manage.py makemigrations users
 docker compose exec -it backend python3 manage.py migrate
 ```
 ## 管理者を登録
 ```
 docker compose exec -it backend python3 manage.py createsuperuser
+docker run -it --rm --backend python3 manage.py createsuperuser
 ```
 
 ## .envファイルのサンプル
@@ -139,9 +133,10 @@ SECRET_KEY=(生成したセキュリティキーをここに記載する)
 DEBUG=True
 
 ALLOWED_HOSTS=*
-CSRF_TRUSTED_ORIGINS=*
+# フロントエンドやリバースプロキシが動作するオリジン(スキーマ+ホスト+ポート)をカンマ区切りで指定します。
+# 例: "http://localhost:3000,http://127.0.0.1:8000,https://your-domain.com"
+CSRF_TRUSTED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
 
 DATABASE_URL=postgres://django:django@db:5432/open_mes
-
 
 ```

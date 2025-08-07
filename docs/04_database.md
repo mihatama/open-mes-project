@@ -32,7 +32,8 @@ PostgreSQLが本システムのリレーショナルデータベースとして�
 SECRET_KEY= # (Djangoの秘密鍵をここに記載)      # セキュリティキー。初回生成したランダムな値
 DEBUG=True                                # 開発環境ではTrue、本番ではFalse推奨
 ALLOWED_HOSTS=*                           # 許可するホスト名。開発用途ではワイルドカード指定
-CSRF_TRUSTED_ORIGINS=*                    # CSRFを許可するオリジン。開発用に全て許可
+# CSRFを許可するオリジン。フロントエンドのURLをスキーマ(http/https)から指定します。
+CSRF_TRUSTED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
 
 DB_ENGINE=django.db.backends.postgresql   # 使用DBエンジン（PostgreSQL）
 DB_NAME=open_mes                         # データベース名

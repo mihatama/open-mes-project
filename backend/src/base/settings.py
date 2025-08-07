@@ -54,19 +54,13 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Cookie と Session Cookie の SameSite 設定
-# 開発環境でフロントエンド(localhost:5173)とバックエンド(localhost:8000)が異なるオリジンで動作しているため、
-# クロスオリジンでのAPIリクエストを許可する設定を行います。
-if not DEBUG:
-    # 本番環境では、クロスドメインでCookieを安全に送信するためにSameSite='None'とし、
-    # SecureフラグをTrueに設定します（HTTPSが必須）。
-    CSRF_COOKIE_SAMESITE = 'None'
-    SESSION_COOKIE_SAMESITE = 'None'
-    CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_SECURE = True
-else:
-    # 開発環境では、HTTP通信も考慮し、'Lax'を設定します。
-    CSRF_COOKIE_SAMESITE = 'Lax'
-    SESSION_COOKIE_SAMESITE = 'Lax'
+# 現在の環境はHTTPで運用されているため、SecureフラグをFalseに設定します。
+# これにより、ブラウザがCSRFトークンを正しく受け取り、保存できるようになります。
+# 将来的にHTTPSへ移行する際は、以下のSecureフラグをTrueに変更してください。
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
 
 # JavaScriptからCSRFトークンを読み取れるようにする
 # フロントエンドの `getCookie('csrftoken')` が機能するために必要です。
