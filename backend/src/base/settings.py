@@ -55,9 +55,18 @@ CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Cookie と Session Cookie の SameSite 設定
 # 開発環境でフロントエンド(localhost:5173)とバックエンド(localhost:8000)が異なるオリジンで動作しているため、
-# 'Lax' に設定してクロスサイトリクエストでCookieが送信されるようにします。
-CSRF_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SAMESITE = 'Lax'
+# クロスオリジンでのAPIリクエストを許可する設定を行います。
+if not DEBUG:
+    # 本番環境では、クロスドメインでCookieを安全に送信するためにSameSite='None'とし、
+    # SecureフラグをTrueに設定します（HTTPSが必須）。
+    CSRF_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+else:
+    # 開発環境では、HTTP通信も考慮し、'Lax'を設定します。
+    CSRF_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Application definition
 
