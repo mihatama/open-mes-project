@@ -1,6 +1,6 @@
 from django.urls import path, include
-# `users/views/rest.py` にビューを定義することを想定
-from .views import rest as rest_views
+# APIビューは `users/rest.py` に定義されていると想定
+from . import rest as rest_views
 
 app_name = 'users_api'
 

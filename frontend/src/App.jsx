@@ -83,10 +83,16 @@ function AppContent() {
   const checkAuth = useCallback(async () => {
     try {
       const res = await fetch('/api/users/session/', { credentials: 'include' });
-      const json = await res.json();
-      setIsAuthenticated(json.isAuthenticated);
-      setIsStaff(json.isStaff || json.isSuperuser);
-    } catch {
+      if (res.ok) {
+        const json = await res.json();
+        setIsAuthenticated(json.isAuthenticated);
+        setIsStaff(json.isStaff || json.isSuperuser);
+      } else {
+        // 403 Forbiddenなどのエラーはここで処理
+        setIsAuthenticated(false);
+        setIsStaff(false);
+      }
+    } catch (e) {
       setIsAuthenticated(false);
       setIsStaff(false);
     } finally {

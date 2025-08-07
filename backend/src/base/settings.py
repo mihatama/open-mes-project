@@ -68,6 +68,10 @@ else:
     CSRF_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SAMESITE = 'Lax'
 
+# JavaScriptからCSRFトークンを読み取れるようにする
+# フロントエンドの `getCookie('csrftoken')` が機能するために必要です。
+CSRF_COOKIE_HTTPONLY = False
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -98,10 +102,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -129,6 +133,10 @@ TEMPLATES = [
         },
     },
 ]
+
+# CSRFエラー発生時に、より詳細なデバッグ情報を含むJSONレスポンスを返すためのカスタムビュー
+# これにより、フロントエンドで403エラーの原因を特定しやすくなります。
+CSRF_FAILURE_VIEW = 'users.rest.csrf_failure'
 
 WSGI_APPLICATION = 'base.wsgi.application'
 
