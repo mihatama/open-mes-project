@@ -8,3 +8,5 @@ __pycache__/
 /script/data/
 *.ini
 *sqlite3
+.env.prod
+.env.prod.https

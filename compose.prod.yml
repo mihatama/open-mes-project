@@ -1,0 +1,64 @@
+services:
+  db:
+    build: ./db/image
+    container_name: prod_db
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data/
+    env_file:
+      - .env.prod # DB設定はこちらを参照
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django -d open_mes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: prod_backend
+    build:
+      context: ./backend/image
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn base.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./backend/src:/open_mes
+      - static_volume:/open_mes/staticfiles
+    env_file:
+      - .env.prod # Django設定はこちらを参照
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/base/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  https-portal:
+    image: steveltn/https-portal:1
+    container_name: prod_https_portal
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+    env_file:
+      - .env.prod.https # https-portal用の設定
+    volumes:
+      # https-portalが証明書などを保存する永続ボリューム
+      - https_portal_data:/var/lib/https-portal
+      # カスタムNginx設定。ファイル名の 'your-domain.com' は、.env.prod.httpsで設定したドメイン名と一致させてください。
+      - ./reverse-proxy/https-portal.conf:/var/lib/https-portal/vhosts.d/your-domain.com.conf:ro
+      # Djangoの静的ファイル (adminなど)
+      - static_volume:/var/www/backend/static:ro
+      # Reactのビルド済み静的ファイル (事前に 'npm run build' が必要)
+      - ./frontend/build:/var/www/frontend:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_prod:
+  static_volume:
+  https_portal_data:

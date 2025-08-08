@@ -5,8 +5,11 @@ const allowedHostsFromEnv = process.env.ALLOWED_HOSTS
   ? process.env.ALLOWED_HOSTS.split(',')
   : [];
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: 'build',
+  },
   server: {
     // Dockerコンテナ外や他のマシンからアクセスできるようにホストを0.0.0.0に設定
     host: '0.0.0.0',
@@ -21,4 +24,4 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-}));
+});
