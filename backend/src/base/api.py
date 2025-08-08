@@ -25,6 +25,7 @@ DATA_TYPE_MODEL_MAPPING = {
     'goods_receipt': 'inventory.Receipt',
     'sales_order': 'inventory.SalesOrder',
     'inventory': 'inventory.Inventory',
+    'stock_movement': 'inventory.StockMovement',
     'production_plan': 'production.ProductionPlan',
     'parts_used': 'production.PartsUsed',
     'base_setting': 'base.BaseSetting',

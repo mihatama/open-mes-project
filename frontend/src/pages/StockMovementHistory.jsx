@@ -31,12 +31,16 @@ const StockMovementHistory = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [displaySettings, setDisplaySettings] = useState([]);
+    const [searchFields, setSearchFields] = useState([]);
+
     const [searchCriteria, setSearchCriteria] = useState({
-        search_part_number: '',
-        search_warehouse: '',
-        search_operator: '',
-        search_movement_date_from: '',
-        search_movement_date_to: '',
+        part_number: '',
+        warehouse: '',
+        operator: '',
+        movement_date_from: '',
+        movement_date_to: '',
+        reference_document: '',
     });
     const [selectedTypes, setSelectedTypes] = useState(getDefaultSelectedTypes());
     
@@ -50,39 +54,68 @@ const StockMovementHistory = () => {
     const fetchHistory = useCallback(async (page, params) => {
         setLoading(true);
         setError(null);
-        const url = new URL(`${window.location.origin}/api/inventory/stock-movements/`);
-        url.searchParams.append('page', page);
-        url.searchParams.append('page_size', pageSize);
+        
+        const dataUrl = new URL(`${window.location.origin}/api/inventory/stock-movements/`);
+        dataUrl.searchParams.append('page', page);
+        dataUrl.searchParams.append('page_size', pageSize);
 
         Object.entries(params).forEach(([key, value]) => {
             if (value) {
-                if (key === 'search_movement_type' && value.size > 0) {
+                if (key === 'movement_type' && value.size > 0) {
                     value.forEach(type => {
-                        url.searchParams.append(key, type);
+                        dataUrl.searchParams.append('search_movement_type', type);
                     });
-                } else if (key !== 'search_movement_type' && value !== '') {
-                    url.searchParams.append(key, value);
+                } else if (key !== 'movement_type' && value !== '') {
+                    dataUrl.searchParams.append(`search_${key}`, value);
                 }
             }
         });
 
+        const settingsUrl = '/api/base/model-display-settings/?data_type=stock_movement';
+        const fieldsUrl = '/api/base/model-fields/?data_type=stock_movement';
+
         try {
-            const response = await fetch(url, { credentials: 'include' });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            const [settingsResponse, fieldsResponse, dataResponse] = await Promise.all([
+                fetch(settingsUrl, { credentials: 'include' }),
+                fetch(fieldsUrl, { credentials: 'include' }),
+                fetch(dataUrl.toString(), { credentials: 'include' })
+            ]);
+
+            if (settingsResponse.ok && fieldsResponse.ok) {
+                const settings = await settingsResponse.json();
+                const fields = await fieldsResponse.json();
+                const verboseNameMap = new Map(fields.map(f => [f.name, f.verbose_name]));
+
+                const combinedSettings = settings.map(setting => ({
+                    ...setting,
+                    verbose_name: verboseNameMap.get(setting.model_field_name) || setting.model_field_name,
+                }));
+
+                const visibleColumns = combinedSettings
+                    .filter(s => s.is_list_display)
+                    .sort((a, b) => a.display_order - b.display_order);
+                setDisplaySettings(visibleColumns);
+
+                const searchableFields = combinedSettings
+                    .filter(s => s.is_search_field)
+                    .sort((a, b) => a.search_order - b.search_order);
+                setSearchFields(searchableFields);
+            } else {
+                console.error('表示設定の取得に失敗しました。');
             }
-            const data = await response.json();
+
+            if (!dataResponse.ok) throw new Error(`HTTP error! status: ${dataResponse.status}`);
+            const data = await dataResponse.json();
             setHistory(data.results || []);
             setPagination({
                 count: data.count || 0,
-                num_pages: data.num_pages || 1,
+                num_pages: data.total_pages || 1,
                 current_page: data.current_page || 1,
                 next: data.next,
                 previous: data.previous,
             });
         } catch (e) {
             setError('データの読み込みに失敗しました。');
-            console.error("Fetch error:", e);
         } finally {
             setLoading(false);
         }
@@ -111,21 +144,22 @@ const StockMovementHistory = () => {
         setSelectedTypes(newSelectedTypes);
         // Trigger search immediately
         setCurrentPage(1);
-        setActiveSearch({ ...searchCriteria, search_movement_type: newSelectedTypes });
+        setActiveSearch({ ...searchCriteria, movement_type: newSelectedTypes });
     };
 
     const handleSearch = () => {
         setCurrentPage(1);
-        setActiveSearch({ ...searchCriteria, search_movement_type: selectedTypes });
+        setActiveSearch({ ...searchCriteria, movement_type: selectedTypes });
     };
 
     const handleReset = () => {
         setSearchCriteria({
-            search_part_number: '',
-            search_warehouse: '',
-            search_operator: '',
-            search_movement_date_from: '',
-            search_movement_date_to: '',
+            part_number: '',
+            warehouse: '',
+            operator: '',
+            movement_date_from: '',
+            movement_date_to: '',
+            reference_document: '',
         });
         setSelectedTypes(getDefaultSelectedTypes());
         setCurrentPage(1);
@@ -165,6 +199,56 @@ const StockMovementHistory = () => {
         const startItem = (currentPage - 1) * pageSize + 1;
         const endItem = Math.min(startItem + pageSize - 1, count);
         return `全 ${count} 件中 ${startItem} - ${endItem} 件を表示 (ページ ${currentPage} / ${num_pages})`;
+    };
+
+    const renderTableHeaders = () => {
+        if (loading || displaySettings.length === 0) {
+            return (
+                <tr>
+                    <th>移動日時</th><th>品番</th><th>倉庫</th><th>移動タイプ</th>
+                    <th>数量</th><th>記録者</th><th>備考</th><th>参照ドキュメント</th>
+                </tr>
+            );
+        }
+        return (
+            <tr>
+                {displaySettings.map(setting => (
+                    <th key={setting.model_field_name}>
+                        {setting.display_name || setting.verbose_name}
+                    </th>
+                ))}
+            </tr>
+        );
+    };
+
+    const renderTableBody = () => {
+        const colSpan = displaySettings.length > 0 ? displaySettings.length : 8;
+        if (loading) return <tr><td colSpan={colSpan} className="text-center">読み込み中...</td></tr>;
+        if (error) return <tr><td colSpan={colSpan} className="text-center text-danger">{error}</td></tr>;
+        if (history.length === 0) return <tr><td colSpan={colSpan} className="text-center">データがありません。</td></tr>;
+
+        return history.map(item => (
+            <tr key={item.id}>
+                {displaySettings.map(setting => {
+                    const fieldName = setting.model_field_name;
+                    let cellValue;
+
+                    switch (fieldName) {
+                        case 'movement_type':
+                            cellValue = item.movement_type_display;
+                            break;
+                        case 'operator':
+                            cellValue = item.operator_username;
+                            break;
+                        default:
+                            cellValue = item[fieldName];
+                            break;
+                    }
+
+                    return <td key={fieldName}>{cellValue ?? ''}</td>;
+                })}
+            </tr>
+        ));
     };
 
     const PaginationControls = () => {
@@ -224,40 +308,28 @@ const StockMovementHistory = () => {
         <div id="schedule-container">
             <h2 className="mb-3">入出庫履歴検索</h2>
             <div id="search-criteria-area" className="mb-3 p-3 border rounded bg-light">
-                {/* Row 1 */}
                 <div className="row g-2 mb-2">
-                    <div className="col-md-4">
-                        <label htmlFor="search-part-number" className="form-label form-label-sm">品番:</label>
-                        <input type="text" id="search-part-number" name="search_part_number" className="form-control form-control-sm" value={searchCriteria.search_part_number} onChange={handleSearchChange} />
-                    </div>
-                    <div className="col-md-4">
-                        <label htmlFor="search-warehouse" className="form-label form-label-sm">倉庫:</label>
-                        <input type="text" id="search-warehouse" name="search_warehouse" className="form-control form-control-sm" value={searchCriteria.search_warehouse} onChange={handleSearchChange} />
-                    </div>
-                    <div className="col-md-2">
-                        <label htmlFor="search-movement-date-from" className="form-label form-label-sm">移動日 (From):</label>
-                        <input type="date" id="search-movement-date-from" name="search_movement_date_from" className="form-control form-control-sm" value={searchCriteria.search_movement_date_from} onChange={handleSearchChange} />
-                    </div>
-                    <div className="col-md-2">
-                        <label htmlFor="search-movement-date-to" className="form-label form-label-sm">移動日 (To):</label>
-                        <input type="date" id="search-movement-date-to" name="search_movement_date_to" className="form-control form-control-sm" value={searchCriteria.search_movement_date_to} onChange={handleSearchChange} />
+                    {searchFields.map(field => (
+                        <div className="col-md-3" key={field.model_field_name}>
+                            <label htmlFor={`search-${field.model_field_name}`} className="form-label form-label-sm">{field.display_name || field.verbose_name}:</label>
+                            <input
+                                type={field.model_field_name.includes('date') ? 'date' : 'text'}
+                                id={`search-${field.model_field_name}`}
+                                name={field.model_field_name}
+                                className="form-control form-control-sm"
+                                value={searchCriteria[field.model_field_name] || ''}
+                                onChange={handleSearchChange}
+                                placeholder={`${field.display_name || field.verbose_name}で検索...`}
+                            />
+                        </div>
+                    ))}
+                </div>
+                <div className="row g-2 mb-2 align-items-end">
+                    <div className="col-md-auto ms-auto">
+                        <button id="advanced-search-button" className="btn btn-primary btn-sm" onClick={handleSearch}>検索</button>
+                        <button id="reset-search-button" type="button" className="btn btn-secondary btn-sm ms-2" onClick={handleReset}>リセット</button>
                     </div>
                 </div>
-                {/* Row 2 */}
-                <div className="row g-2 mb-2">
-                    <div className="col-md-4">
-                        <label htmlFor="search-operator" className="form-label form-label-sm">記録者:</label>
-                        <input type="text" id="search-operator" name="search_operator" className="form-control form-control-sm" value={searchCriteria.search_operator} onChange={handleSearchChange} />
-                    </div>
-                    <div className="col-md-2"></div>
-                    <div className="col-md-3 align-self-end">
-                        <button id="advanced-search-button" className="btn btn-primary btn-sm w-100" onClick={handleSearch}>検索</button>
-                    </div>
-                    <div className="col-md-3 align-self-end">
-                        <button id="reset-search-button" type="button" className="btn btn-secondary btn-sm w-100" onClick={handleReset}>リセット</button>
-                    </div>
-                </div>
-                {/* Row 3 */}
                 <div className="row g-2">
                     <div className="col-md-12">
                         <label className="form-label form-label-sm">移動タイプ:</label>
@@ -292,39 +364,9 @@ const StockMovementHistory = () => {
             <div className="table-responsive">
                 <table id="schedule-table" className="table table-striped table-bordered table-hover table-sm">
                     <thead className="table-light">
-                        <tr>
-                            <th>移動日時</th>
-                            <th>品番</th>
-                            <th>倉庫</th>
-                            <th>移動タイプ</th>
-                            <th>数量</th>
-                            <th>記録者</th>
-                            <th>備考</th>
-                            <th>参照ドキュメント</th>
-                        </tr>
+                        {renderTableHeaders()}
                     </thead>
-                    <tbody>
-                        {loading ? (
-                            <tr><td colSpan="8" className="text-center">読み込み中...</td></tr>
-                        ) : error ? (
-                            <tr><td colSpan="8" className="text-center text-danger">{error}</td></tr>
-                        ) : history.length > 0 ? (
-                            history.map(item => (
-                                <tr key={item.id}>
-                                    <td>{item.movement_date}</td>
-                                    <td>{item.part_number}</td>
-                                    <td>{item.warehouse}</td>
-                                    <td>{item.movement_type_display}</td>
-                                    <td>{item.quantity}</td>
-                                    <td>{item.operator_username}</td>
-                                    <td>{item.description}</td>
-                                    <td>{item.reference_document}</td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan="8" className="text-center">データがありません。</td></tr>
-                        )}
-                    </tbody>
+                    <tbody>{renderTableBody()}</tbody>
                 </table>
             </div>
 

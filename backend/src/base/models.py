@@ -18,6 +18,7 @@ DATA_TYPE_CHOICES = [
     ('csv_column_mapping', _('CSV列マッピング')),
     ('model_display_setting', _('モデル項目表示設定')),
     ('qr_code_action', _('QRコードアクション')),
+    ('stock_movement', _('入出庫履歴')),
 ]
 
 # APIなどでモデル文字列とモデルクラスをマッピングするために使用

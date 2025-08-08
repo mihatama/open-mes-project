@@ -8,6 +8,7 @@ const DATA_TYPE_CHOICES = [
     { value: 'goods_receipt', label: '入庫処理' },
     { value: 'sales_order', label: '出庫処理' },
     { value: 'inventory', label: '在庫照会' },
+    { value: 'stock_movement', label: '入出庫履歴' },
 ];
 
 const DATA_TYPE_MAP = {
@@ -26,6 +27,10 @@ const DATA_TYPE_MAP = {
     inventory: {
         fetch: ['inventory'],
         save: ['inventory'],
+    },
+    stock_movement: {
+        fetch: ['stock_movement'],
+        save: ['stock_movement'],
     }
 };
 
