@@ -46,11 +46,14 @@ services:
     restart: always
     env_file:
       - .env.prod.https # https-portal用の設定
+    environment:
+      SERVER_NAMES_HASH_MAX_SIZE: 1024
+      SERVER_NAMES_HASH_BUCKET_SIZE: 128
     volumes:
       # https-portalが証明書などを保存する永続ボリューム
       - https_portal_data:/var/lib/https-portal
-      # カスタムNginx設定。ファイル名の 'your-domain.com' は、.env.prod.httpsで設定したドメイン名と一致させてください。
-      - ./reverse-proxy/https-portal.conf:/var/lib/https-portal/vhosts.d/your-domain.com.conf:ro
+      # カスタムNginx設定。'your-domain.com'の部分を、.env.prod.httpsで設定した実際のドメイン名に必ず置き換えてください。
+      - ./reverse-proxy/https-portal.conf:/var/lib/https-portal/vhosts.d/open-mes.example.com.conf:ro
       # Djangoの静的ファイル (adminなど)
       - static_volume:/var/www/backend/static:ro
       # Reactのビルド済み静的ファイル (事前に 'npm run build' が必要)

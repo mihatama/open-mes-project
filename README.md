@@ -112,12 +112,12 @@ pip install -r ./open_mes/image/requirements.txt
 
 ## 初回は下記コマンドを実行
 ```
-docker compose exec -it backend python3 manage.py migrate
+docker compose run -it --rm backend python3 manage.py migrate
 ```
 ## 管理者を登録
 ```
 docker compose exec -it backend python3 manage.py createsuperuser
-docker run -it --rm --backend python3 manage.py createsuperuser
+docker composerun -it --rm backend python3 manage.py createsuperuser
 ```
 
 ## .envファイルのサンプル
