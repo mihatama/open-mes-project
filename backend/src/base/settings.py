@@ -21,11 +21,8 @@ VERSION = '0.0.0'
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
-# .env ファイルのパスをプロジェクトルート (`/open-mes-project/.env`) に変更します。
-# これにより、コンテナ外で manage.py を実行する際も環境変数を読み込めます。
-dotenv_path = BASE_DIR.parent.parent / '.env'
-env.read_env(str(dotenv_path))
 
+# .envファイルからの環境変数の読み込みは、docker-composeのenv_fileディレクティブに任せます。
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -129,8 +126,9 @@ TEMPLATES = [
 ]
 
 # CSRFエラー発生時に、より詳細なデバッグ情報を含むJSONレスポンスを返すためのカスタムビュー
-# これにより、フロントエンドで403エラーの原因を特定しやすくなります。
-CSRF_FAILURE_VIEW = 'users.rest.csrf_failure'
+# 問題解決のため、一時的にコメントアウトしてDjangoのデフォルトエラーページを表示させ、原因を特定します。
+# このビューが有効になっていると、CSRFエラーの真の原因が隠蔽され、汎用的な400エラーが返される可能性があります。
+# CSRF_FAILURE_VIEW = 'users.rest.csrf_failure'
 
 WSGI_APPLICATION = 'base.wsgi.application'
 
@@ -181,22 +179,35 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 # `collectstatic` が静的ファイルを集める場所 (本番環境用)
-STATIC_ROOT = BASE_DIR.parent / "staticfiles"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # `manage.py findstatic` が探す追加の静的ファイルディレクトリ
 STATICFILES_DIRS = [
-    # プロジェクト共通の静的ファイル置き場
-    BASE_DIR / "static",
+    # プロジェクト共通の静的ファイル置き場。このディレクトリはプロジェクトに存在しないため、リストを空にします。
 ]
 
 # Vite (django-vite) と WhiteNoise の設定
 # ------------------------------------------------------------------------------
-# Viteのビルド成果物が出力されるパス (例: /backend/frontend/dist)
-DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent.parent / "frontend" / "dist"
+# Viteのビルド成果物が出力されるパス (例: /frontend/dist)
 DJANGO_VITE_DEV_MODE = DEBUG
 
-# Viteのビルドディレクトリを静的ファイルの探索対象に追加
-STATICFILES_DIRS.append(DJANGO_VITE_ASSETS_PATH)
+# 開発環境(DEBUG=True)の場合のみ、django-vite関連の設定を有効化します。
+if DEBUG:
+    # Viteのビルド成果物が出力されるパス (例: /frontend/dist)
+    # 開発環境では、プロジェクトルートからの相対パスで指定します。
+    DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent / "frontend" / "dist"
+
+    # Viteのビルドディレクトリを静的ファイルの探索対象に追加
+    STATICFILES_DIRS.append(DJANGO_VITE_ASSETS_PATH)
+
+    # django-vite の設定
+    DJANGO_VITE = {
+        "default": {
+            "manifest_path": DJANGO_VITE_ASSETS_PATH / "manifest.json",
+        }
+    }
+    # 開発時にViteのmanifest.jsonが見つからない警告(W001)を抑制します。
+    SILENCED_SYSTEM_CHECKS = ['django_vite.W001']
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
@@ -229,5 +240,35 @@ LOGOUT_REDIRECT_URL = '/'  # ログアウト後のリダイレクト先
 
 PASSWORD_EXPIRATION_DAYS = 180 # 例: 90日
 
+# LOGGING設定
+# DEBUG=False の場合でも、エラーがコンソールに出力されるように設定します。
+# これにより、DisallowedHostのような本番環境でのみ発生するエラーをDockerログで確認できます。
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django.security': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 # 有効期限を無効にする場合は 0 や None を設定
 # PASSWORD_EXPIRATION_DAYS = None

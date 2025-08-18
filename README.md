@@ -109,15 +109,22 @@ source venv/bin/activate
 pip install -r ./open_mes/image/requirements.txt
 
 ```
+## buildコマンド
+```
+docker compose run --rm frontend npm run build
+docker compose -f compose.yml run --rm frontend npm run build
+```
 
 ## 初回は下記コマンドを実行
 ```
 docker compose run -it --rm backend python3 manage.py migrate
+docker compose -f compose.yml run -it --rm backend python3 manage.py migrate
 ```
 ## 管理者を登録
 ```
 docker compose exec -it backend python3 manage.py createsuperuser
-docker composerun -it --rm backend python3 manage.py createsuperuser
+docker compose run -it --rm backend python3 manage.py createsuperuser
+docker compose -f compose.yml run -it --rm backend python3 manage.py createsuperuser
 ```
 
 ## .envファイルのサンプル

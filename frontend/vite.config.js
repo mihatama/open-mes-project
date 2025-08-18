@@ -8,7 +8,7 @@ const allowedHostsFromEnv = process.env.ALLOWED_HOSTS
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'build',
+    outDir: 'dist',
   },
   server: {
     // Dockerコンテナ外や他のマシンからアクセスできるようにホストを0.0.0.0に設定
