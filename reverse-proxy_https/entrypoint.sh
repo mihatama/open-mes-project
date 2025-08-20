@@ -17,7 +17,7 @@ if [ ! -f "${CERT_DIR}/fullchain.pem" ] || [ ! -f "${CERT_DIR}/privkey.pem" ]; t
   openssl req -x509 -nodes -newkey rsa:4096 -days 1 \
     -keyout "${CERT_DIR}/privkey.pem" \
     -out "${CERT_DIR}/fullchain.pem" \
-    -subj "/CN=localhost"
+    -subj "/CN=${DOMAIN}"
 fi
 
 # options-ssl-nginx.conf が存在しない場合、推奨設定を書き込む

@@ -34,6 +34,9 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+    # Add HSTS header to force HTTPS
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
     # Django Admin static files
     location /static/ {
         alias /var/www/backend/static/;

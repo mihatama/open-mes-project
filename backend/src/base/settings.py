@@ -47,17 +47,20 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
 # .env ファイルから読み込む。
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
-# Cookie を使用したクロスオリジンリクエストを許可する
-CORS_ALLOW_CREDENTIALS = True
+# --- Cookie, CSRF, and Reverse Proxy Settings ---
 
-# CSRF Cookie と Session Cookie の SameSite 設定
-# 現在の環境はHTTPで運用されているため、SecureフラグをFalseに設定します。
-# これにより、ブラウザがCSRFトークンを正しく受け取り、保存できるようになります。
-# 将来的にHTTPSへ移行する際は、以下のSecureフラグをTrueに変更してください。
+# リバースプロキシ(Nginx)からのX-Forwarded-Protoヘッダーを信頼し、
+# request.is_secure()が正しく動作するようにします。HTTPS環境では必須です。
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# 本番環境(HTTPS)ではセキュアなクッキーを使用します
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+
+# CookieのSameSite属性。クロスオリジンリクエストを許可するために必要です。
+CORS_ALLOW_CREDENTIALS = True
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = False
 
 # JavaScriptからCSRFトークンを読み取れるようにする
 # フロントエンドの `getCookie('csrftoken')` が機能するために必要です。
@@ -111,7 +114,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            os.path.join(BASE_DIR, 'templates/'),
+            BASE_DIR / 'templates',
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -188,26 +191,24 @@ STATICFILES_DIRS = [
 
 # Vite (django-vite) と WhiteNoise の設定
 # ------------------------------------------------------------------------------
-# Viteのビルド成果物が出力されるパス (例: /frontend/dist)
 DJANGO_VITE_DEV_MODE = DEBUG
 
-# 開発環境(DEBUG=True)の場合のみ、django-vite関連の設定を有効化します。
-if DEBUG:
-    # Viteのビルド成果物が出力されるパス (例: /frontend/dist)
-    # 開発環境では、プロジェクトルートからの相対パスで指定します。
-    DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent / "frontend" / "dist"
+# Viteのビルド成果物が出力されるパス
+DJANGO_VITE_ASSETS_PATH = BASE_DIR.parent / "frontend" / "dist"
 
-    # Viteのビルドディレクトリを静的ファイルの探索対象に追加
+# 開発環境ではViteのビルドディレクトリを静的ファイルの探索対象に追加
+if DEBUG:
     STATICFILES_DIRS.append(DJANGO_VITE_ASSETS_PATH)
 
-    # django-vite の設定
-    DJANGO_VITE = {
-        "default": {
-            "manifest_path": DJANGO_VITE_ASSETS_PATH / "manifest.json",
-        }
+# django-vite の設定
+DJANGO_VITE = {
+    "default": {
+        "manifest_path": DJANGO_VITE_ASSETS_PATH / "manifest.json",
     }
-    # 開発時にViteのmanifest.jsonが見つからない警告(W001)を抑制します。
-    SILENCED_SYSTEM_CHECKS = ['django_vite.W001']
+}
+# 開発時および本番起動時にViteのmanifest.jsonが見つからない警告(W001)を抑制します。
+# 本番環境ではNginxがフロントエンドを直接配信するため、Djangoはmanifestを読み込む必要がありません。
+SILENCED_SYSTEM_CHECKS = ['django_vite.W001']
 
 # Django REST Framework settings
 REST_FRAMEWORK = {

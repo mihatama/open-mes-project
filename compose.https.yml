@@ -59,6 +59,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      # 初回起動時にDHパラメータファイルの生成に時間がかかるため、
+      # ヘルスチェックの失敗が許容される猶予期間 (grace period) を設定します。
+      start_period: 180s
     depends_on:
       - backend
 
@@ -83,7 +86,19 @@ services:
       - -c
       - |
         trap exit TERM;
-        certbot certonly --webroot -w /var/www/certbot --email $$EMAIL -d $$DOMAIN --rsa-key-size 4096 --agree-tos --no-eff-email --non-interactive || true
+        # 証明書ファイルが存在しない場合のみ、取得処理を実行する
+        if [ ! -f "/etc/letsencrypt/live/$$DOMAIN/fullchain.pem" ]; then
+          echo "### Certificate not found for $$DOMAIN. Requesting a new one..."
+          certbot certonly --webroot -w /var/www/certbot \
+            --email $$EMAIL -d $$DOMAIN \
+            --rsa-key-size 4096 --agree-tos --no-eff-email --non-interactive \
+            --staging \
+            --cert-name $$DOMAIN
+          echo "### Certificate command finished, reloading Nginx..."
+          docker kill -s HUP https_reverse_proxy
+        else
+          echo "### Certificate for $$DOMAIN already exists. Skipping acquisition."
+        fi
         echo '### Starting renewal daemon...'
         while :; do certbot renew --quiet --post-hook 'docker kill -s HUP https_reverse_proxy'; sleep 12h & wait $${!}; done;
 
