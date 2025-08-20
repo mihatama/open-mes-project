@@ -10,3 +10,8 @@ __pycache__/
 *sqlite3
 .env.prod
 .env.prod.https
+
+# HTTPS (Let's Encrypt)
+# 証明書やアカウントキーなどの機密情報を含みます
+/certbot/conf/
+/certbot/www/

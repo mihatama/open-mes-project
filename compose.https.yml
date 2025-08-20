@@ -1,0 +1,92 @@
+services:
+  db:
+    build: ./db/image
+    container_name: https_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env.prod # DB設定はこちらを参照
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django -d open_mes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: https_backend
+    build:
+      context: ./backend/image
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn base.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ./backend/src:/open_mes
+      - static_volume:/open_mes/staticfiles
+    env_file:
+      - .env.prod # Django設定はこちらを参照
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/base/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  reverse-proxy:
+    build:
+      context: ./reverse-proxy_https
+      dockerfile: Dockerfile
+    container_name: https_reverse_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: always
+    volumes:
+      - static_volume:/var/www/backend/static:ro
+      - ./frontend/dist:/var/www/frontend:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./reverse-proxy_https/entrypoint.sh:/docker-entrypoint.d/20-setup-certs.sh:ro
+    env_file:
+      - .env.prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - backend
+
+  certbot:
+    build: ./certbot
+    container_name: https_certbot
+    # Nginxをリロードするためにdocker.sockをマウントします。
+    # 注意: これによりコンテナがホストのDockerを操作できるため、セキュリティリスクが伴います。
+    # 公式のcertbotイメージを信頼できる場合のみ使用してください。
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    env_file:
+      - .env.prod
+    depends_on:
+      reverse-proxy:
+        condition: service_healthy
+    # entrypointを/bin/shに設定し、commandでシェルスクリプトを実行
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        trap exit TERM;
+        certbot certonly --webroot -w /var/www/certbot --email $$EMAIL -d $$DOMAIN --rsa-key-size 4096 --agree-tos --no-eff-email --non-interactive || true
+        echo '### Starting renewal daemon...'
+        while :; do certbot renew --quiet --post-hook 'docker kill -s HUP https_reverse_proxy'; sleep 12h & wait $${!}; done;
+
+volumes:
+  postgres_data:
+  static_volume:

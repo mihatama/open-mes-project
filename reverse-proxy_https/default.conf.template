@@ -1,0 +1,61 @@
+# HTTP - Redirect to HTTPS and handle Certbot challenges
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Health check endpoint for Docker
+    location /healthz {
+        return 200 "OK";
+        access_log off;
+    }
+
+    # Let's Encrypt ACME challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Redirect all other traffic to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS
+server {
+    listen 443 ssl;
+    http2 on; # http2を有効化
+    server_name ${DOMAIN};
+
+    # SSL
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    # These files should be generated or downloaded.
+    # See instructions for how to get them.
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Django Admin static files
+    location /static/ {
+        alias /var/www/backend/static/;
+    }
+
+    # React frontend static files
+    location / {
+        root /var/www/frontend;
+        try_files $uri /index.html;
+    }
+
+    # Django backend API and Admin pages
+    location ~ ^/(api|admin)/ {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        send_timeout 600;
+    }
+}
