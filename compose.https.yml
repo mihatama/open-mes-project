@@ -99,7 +99,6 @@ services:
           certbot certonly --webroot -w /var/www/certbot \
             --email $$EMAIL -d $$DOMAIN \
             --rsa-key-size 4096 --agree-tos --no-eff-email --non-interactive \
-            --staging \
             --cert-name $$DOMAIN
           echo "### Certificate command finished, reloading Nginx..."
           docker kill -s HUP https_reverse_proxy
