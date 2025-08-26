@@ -17,7 +17,6 @@ const GoodsReceipt = () => {
   const [error, setError] = useState(null);
   const [displaySettings, setDisplaySettings] = useState([]); // For dynamic columns
   const [searchFields, setSearchFields] = useState([]); // State for dynamic search fields
-  const [searchOptions, setSearchOptions] = useState({}); // For dropdown options
 
   // State for search filters
   const [filters, setFilters] = useState({
@@ -118,25 +117,6 @@ const GoodsReceipt = () => {
           .filter(s => s.is_search_field)
           .sort((a, b) => a.search_order - b.search_order);
         setSearchFields(searchableFields);
-
-        // searchableFields に基づいて選択肢を取得
-        const newOptions = {};
-        const optionPromises = searchableFields
-          .filter(field => field.field_type === 'CharField') // CharFieldのみ対象
-          .map(async (field) => {
-              try {
-                  const res = await fetch(`/api/inventory/purchase-orders/distinct-values/?field=${field.model_field_name}`, { credentials: 'include' });
-                  if (res.ok) {
-                      const data = await res.json();
-                      newOptions[field.model_field_name] = data;
-                  }
-              } catch (e) {
-                  console.error(`Failed to fetch options for ${field.model_field_name}`, e);
-              }
-          });
-        
-        await Promise.all(optionPromises);
-        setSearchOptions(newOptions);
 
       } else {
         console.error('表示設定の取得に失敗しました。');
@@ -354,41 +334,19 @@ const GoodsReceipt = () => {
       <div className="goods-receipt-filters d-flex flex-wrap gap-2 align-items-center mb-3">
         {searchFields
           .filter(field => field.model_field_name !== 'status') // statusは固定で表示するので除外
-          .map(field => {
-            // CharField で、選択肢がある場合はプルダウンにする
-            if (field.field_type === 'CharField' && searchOptions[field.model_field_name]?.length > 0) {
-              return (
-                <select
-                  key={field.model_field_name}
-                  name={field.model_field_name}
-                  value={filters[field.model_field_name] || ''}
-                  onChange={handleFilterChange}
-                  className="form-select"
-                  style={{ width: 'auto', flexGrow: 1 }}
-                >
-                  <option value="">{`${field.verbose_name}で検索...`}</option>
-                  {searchOptions[field.model_field_name].map(optionValue => (
-                    <option key={optionValue} value={optionValue}>
-                      {optionValue}
-                    </option>
-                  ))}
-                </select>
-              );
-            }
-            // それ以外は従来のテキスト入力
-            return (
-              <input
-                key={field.model_field_name}
-                type="text"
-                name={field.model_field_name}
-                value={filters[field.model_field_name] || ''}
-                onChange={handleFilterChange}
-                className="form-control"
-                style={{ width: 'auto', flexGrow: 1 }}
-                placeholder={`${field.verbose_name}で検索...`}
-              />
-            );
-        })}
+          .map(field => (
+            <input
+              key={field.model_field_name}
+              type="text"
+              name={field.model_field_name}
+              value={filters[field.model_field_name] || ''}
+              onChange={handleFilterChange}
+              className="form-control"
+              style={{ width: 'auto', flexGrow: 1 }}
+              placeholder={`${field.verbose_name}で検索...`}
+            />
+          ))
+        }
         <select name="status" value={filters.status} onChange={handleFilterChange} className="form-select" style={{ width: 'auto' }}>
             <option value="">全てのステータス</option>
             <option value="pending">未入庫</option>
