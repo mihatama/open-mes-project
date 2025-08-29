@@ -171,6 +171,17 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             if value:
                 filters &= Q(**{field_lookup: value})
 
+        # Add a general search parameter 'search_q' for mobile view
+        search_q = self.request.query_params.get('search_q')
+        if search_q:
+            filters &= (
+                Q(order_number__icontains=search_q) |
+                Q(part_number__icontains=search_q) |
+                Q(product_name__icontains=search_q) |
+                Q(supplier__icontains=search_q) |
+                Q(item__icontains=search_q)
+            )
+
         search_item_product_name = self.request.query_params.get('search_item_product_name')
         if search_item_product_name:
             filters &= (Q(item__icontains=search_item_product_name) | 

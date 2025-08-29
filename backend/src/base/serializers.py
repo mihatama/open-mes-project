@@ -35,6 +35,7 @@ class QrCodeActionSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'description',
+            'action_type',
             'qr_code_pattern',
             'script',
             'is_active',

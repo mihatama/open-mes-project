@@ -3,19 +3,51 @@ import { Container, Table, Button, Modal, Form, Spinner, Alert, Row, Col } from 
 import { getCookie } from '../utils/cookies';
 
 const ACTION_TEMPLATES = {
-    mobile_goods_receipt: {
-        name: 'モバイル入庫処理',
+    'モバイル入庫処理（検索）': {
+        action_type: 'regex',
         description: 'QRコードから品番や発注番号を読み取り、モバイル入庫画面の検索フィールドに入力します。',
         qr_code_pattern: '(^ITEM-.+|^PO-.+)',
-        script: `# QRコードのデータをそのままモバイル入庫画面の検索クエリとして渡します。
-# 'navigate' キーで指定したパスに遷移し、'state' を渡すことができます。
-# 辞書を return することで、フロントエンド側で処理を分岐させます。
+        script: `# QRコードのデータをモバイル入庫画面の検索クエリとして渡します。
 return {
-    "navigate": "/mobile/goods-receipt",
-    "state": {
-        "searchQuery": qr_data
-    }
+    "action": "update_search",
+    "updateSearch": qr_data
 }`,
+        is_active: true,
+    },
+    'モバイル出庫処理（検索）': {
+        action_type: 'regex',
+        description: 'QRコードから受注番号などを読み取り、モバイル出庫画面の検索フィールドに入力します。',
+        qr_code_pattern: '^SO-.+',
+        script: `# QRコードのデータをモバイル出庫画面の検索クエリとして渡します。
+# フロントエンド側で 'action' を見て処理を分岐させます。
+return {
+    "action": "update_search",
+    "updateSearch": qr_data,
+    "navigate": "/mobile/goods-issue"
+}`,
+        is_active: true,
+    },
+    '棚番QRコード（スクリプト判定）': {
+        action_type: 'script',
+        description: 'QRコードが "LOC:" で始まる場合、棚番移動画面の各フィールドを更新します。',
+        qr_code_pattern: '', // スクリプト判定なので不要
+        script: `# スクリプト内でQRデータの内容を判定します。
+# 条件に合致しない場合は何も返しません (None)。
+if qr_data.startswith("LOC:"):
+    # "LOC:WAREHOUSE-A:A-01-01" のような形式を想定
+    parts = qr_data.split(':')
+    if len(parts) == 3:
+        return {
+            "action": "update_fields",
+            "navigate": "/mobile/location-transfer",
+            "updateFields": {
+                "warehouse": parts[1],
+                "sourceLocation": parts[2]
+            }
+        }
+
+# 条件に合致しない場合は何も返さない
+return None`,
         is_active: true,
     },
 };
@@ -58,8 +90,11 @@ const QrCodeActionSettings = () => {
             setCurrentAction({ ...action });
         } else {
             // Creating a new action
+            const firstTemplateName = Object.keys(ACTION_TEMPLATES)[0];
             setCurrentAction({
-                ...ACTION_TEMPLATES.mobile_goods_receipt,
+                name: firstTemplateName,
+                action_type: 'regex', // デフォルト値
+                ...ACTION_TEMPLATES[firstTemplateName],
             });
         }
         setFormErrors({});
@@ -73,10 +108,30 @@ const QrCodeActionSettings = () => {
 
     const handleFormChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setCurrentAction(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+
+        // For new actions, changing the dropdown updates other fields from the template
+        if (name === 'name' && !currentAction.id) {
+            const template = ACTION_TEMPLATES[value];
+            if (template) {
+                setCurrentAction(prev => ({
+                    ...prev, // Preserve is_active state
+                    name: value,
+                    ...template,
+                    // スクリプト判定の場合、パターンをクリア
+                    qr_code_pattern: template.action_type === 'script' ? '' : template.qr_code_pattern,
+                }));
+            }
+        } else if (name === 'action_type') {
+            // アクションタイプを変更した場合
+            setCurrentAction(prev => ({
+                ...prev,
+                action_type: value,
+                // スクリプト判定に切り替えたらパターンをクリア
+                qr_code_pattern: value === 'script' ? '' : prev.qr_code_pattern,
+            }));
+        } else {
+            setCurrentAction(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        }
     };
 
     const handleSave = async (e) => {
@@ -180,21 +235,48 @@ const QrCodeActionSettings = () => {
                         <Modal.Body>
                             {formErrors.non_field_errors && <Alert variant="danger">{formErrors.non_field_errors}</Alert>}
 
-                            <Form.Group as={Row} className="mb-3" controlId="formName">
-                                <Form.Label column sm={3}>アクション名</Form.Label>
+                            <Form.Group as={Row} className="mb-3" controlId="formAction">
+                                <Form.Label column sm={3}>{currentAction.id ? 'アクション名' : 'アクション'}</Form.Label>
                                 <Col sm={9}>
-                                    <Form.Control type="text" name="name" value={currentAction.name} onChange={handleFormChange} isInvalid={!!formErrors.name} required />
+                                    {currentAction.id ? (
+                                        <Form.Control plaintext readOnly value={currentAction.name} />
+                                    ) : (
+                                        <Form.Select name="name" value={currentAction.name} onChange={handleFormChange} isInvalid={!!formErrors.name} required>
+                                            {Object.keys(ACTION_TEMPLATES).map(templateName => (
+                                                <option key={templateName} value={templateName}>{templateName}</option>
+                                            ))}
+                                        </Form.Select>
+                                    )}
                                     <Form.Control.Feedback type="invalid">{formErrors.name}</Form.Control.Feedback>
                                 </Col>
                             </Form.Group>
-                            <Form.Group as={Row} className="mb-3" controlId="formPattern">
-                                <Form.Label column sm={3}>QRコードパターン</Form.Label>
-                                <Col sm={9}>
-                                    <Form.Control type="text" name="qr_code_pattern" value={currentAction.qr_code_pattern} onChange={handleFormChange} isInvalid={!!formErrors.qr_code_pattern} required />
-                                    <Form.Text className="text-muted">マッチング対象のQRコードの正規表現パターン。例: <code>^ITEM-.+</code></Form.Text>
-                                    <Form.Control.Feedback type="invalid">{formErrors.qr_code_pattern}</Form.Control.Feedback>
+
+                            <Form.Group as={Row} className="mb-3" controlId="formActionType">
+                                <Form.Label column sm={3}>アクションタイプ</Form.Label>
+                                <Col sm={9} className="d-flex align-items-center">
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="正規表現で判定"
+                                        name="action_type"
+                                        id="action_type_regex"
+                                        value="regex"
+                                        checked={currentAction.action_type === 'regex'}
+                                        onChange={handleFormChange}
+                                    />
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="スクリプトで判定"
+                                        name="action_type"
+                                        id="action_type_script"
+                                        value="script"
+                                        checked={currentAction.action_type === 'script'}
+                                        onChange={handleFormChange}
+                                    />
                                 </Col>
                             </Form.Group>
+
                             <Form.Group as={Row} className="mb-3" controlId="formDescription">
                                 <Form.Label column sm={3}>説明</Form.Label>
                                 <Col sm={9}>
@@ -202,20 +284,36 @@ const QrCodeActionSettings = () => {
                                     <Form.Control.Feedback type="invalid">{formErrors.description}</Form.Control.Feedback>
                                 </Col>
                             </Form.Group>
-                            <Form.Group className="mb-3" controlId="formScript">
-                                <Form.Label>実行スクリプト (Python)</Form.Label>
-                                <Form.Control
-                                    as="textarea"
-                                    rows={10}
-                                    name="script"
-                                    value={currentAction.script}
-                                    onChange={handleFormChange}
-                                    isInvalid={!!formErrors.script}
-                                    required
-                                    style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
-                                />
-                                <Form.Control.Feedback type="invalid">{formErrors.script}</Form.Control.Feedback>
-                            </Form.Group>
+
+                            {currentAction.action_type === 'regex' && (
+                                <Form.Group as={Row} className="mb-3" controlId="formPattern">
+                                    <Form.Label column sm={3}>QRコードパターン</Form.Label>
+                                    <Col sm={9}>
+                                        <Form.Control type="text" name="qr_code_pattern" value={currentAction.qr_code_pattern} onChange={handleFormChange} isInvalid={!!formErrors.qr_code_pattern} required />
+                                        <Form.Text className="text-muted">マッチング対象のQRコードの正規表現パターン。例: ^ITEM-.+</Form.Text>
+                                        <Form.Control.Feedback type="invalid">{formErrors.qr_code_pattern}</Form.Control.Feedback>
+                                    </Col>
+                                </Form.Group>
+                            )}
+                            {currentAction.action_type === 'script' && (
+                                <Form.Group className="mb-3" controlId="formScript">
+                                    <Form.Label>実行スクリプト (Python)</Form.Label>
+                                    <Form.Text className="text-muted d-block mb-2">
+                                        スクリプト内でQRデータの内容を判定し、条件に合致すれば処理内容を辞書として<code>return</code>してください。合致しない場合は<code>None</code>を返してください。
+                                    </Form.Text>
+                                    <Form.Control
+                                        as="textarea"
+                                        rows={10}
+                                        name="script"
+                                        value={currentAction.script}
+                                        onChange={handleFormChange}
+                                        isInvalid={!!formErrors.script}
+                                        required
+                                        style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+                                    />
+                                    <Form.Control.Feedback type="invalid">{formErrors.script}</Form.Control.Feedback>
+                                </Form.Group>
+                            )}
                             <Form.Group className="mb-3" controlId="formIsActive">
                                 <Form.Check type="switch" name="is_active" label="このアクションを有効にする" checked={currentAction.is_active} onChange={handleFormChange} />
                             </Form.Group>

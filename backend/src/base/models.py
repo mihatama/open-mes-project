@@ -189,7 +189,17 @@ class QrCodeAction(models.Model):
     QRコード読み取り後のアクションを定義するモデル。
     特定のパターンにマッチするQRコードが読み取られた際に、
     定義されたPythonスクリプトを実行します。
+
+    アクションタイプ:
+    - 正規表現で判定 (regex): `qr_code_pattern` にマッチした場合に `script` を実行します。
+    - スクリプトで判定 (script): `script` 内でQRデータの内容を判定し、アクションを決定します。
+      `qr_code_pattern` は使用されません。
     """
+    ACTION_TYPE_CHOICES = [
+        ('regex', _('正規表現で判定')),
+        ('script', _('スクリプトで判定')),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(
         _("アクション名"),
@@ -202,14 +212,22 @@ class QrCodeAction(models.Model):
         blank=True,
         help_text=_("このアクションが何をするかの説明。")
     )
+    action_type = models.CharField(
+        _("アクションタイプ"),
+        max_length=10,
+        choices=ACTION_TYPE_CHOICES,
+        default='regex',
+        help_text=_("アクションをトリガーする条件のタイプを選択します。")
+    )
     qr_code_pattern = models.CharField(
         _("QRコードパターン"),
         max_length=255,
-        help_text=_("マッチング対象のQRコードの正規表現パターン。例: '^ITEM-.+'")
+        blank=True,
+        help_text=_("アクションタイプが「正規表現で判定」の場合に、マッチング対象となる正規表現パターン。例: '^ITEM-.+'")
     )
     script = models.TextField(
         _("実行スクリプト"),
-        help_text=_("QRコードがマッチした際に実行されるPythonスクリプト。")
+        help_text=_("QRコードがマッチした際、またはスクリプト判定で実行されるPythonスクリプト。")
     )
     is_active = models.BooleanField(
         _("有効"),

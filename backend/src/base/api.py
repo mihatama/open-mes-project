@@ -341,43 +341,48 @@ class QrCodeActionViewSet(viewsets.ModelViewSet):
         if not qr_data:
             return Response({'error': 'qr_data is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        actions = QrCodeAction.objects.filter(is_active=True)
+        # スクリプト判定を先に、正規表現判定を後に評価する
+        actions = QrCodeAction.objects.filter(is_active=True).order_by('-action_type')
         
         for action in actions:
             try:
-                if re.match(action.qr_code_pattern, qr_data):
-                    # **セキュリティ警告**: execの使用は非常に危険です。
-                    # これはあくまで概念実証のためのコードです。
-                    # 実際のアプリケーションでは、より安全な方法を検討してください。
-                    
-                    # スクリプトを関数内にラップして 'return' を使えるようにする
-                    # また、'result' 変数への代入による結果返却も引き続きサポートする
-                    script_body = '\n'.join([f'    {line}' for line in action.script.splitlines()])
-                    wrapped_script = f"""
+                # **セキュリティ警告**: execの使用は非常に危険です。
+                # これはあくまで概念実証のためのコードです。
+                # 実際のアプリケーションでは、より安全な方法を検討してください。
+                script_body = '\n'.join([f'    {line}' for line in action.script.splitlines()])
+                wrapped_script = f"""
 def run_action(qr_data):
 {script_body}
-    # スクリプト内で return が使われなかった場合、
-    # result 変数が定義されていればそれを返す
-    if 'result' in locals():
-        return result
 """
-                    script_globals = {}
-                    # execで関数を定義
-                    exec(wrapped_script, script_globals)
+                script_globals = {}
+                exec(wrapped_script, script_globals)
+                action_func = script_globals['run_action']
 
-                    # 定義した関数を取得して実行
-                    action_func = script_globals['run_action']
+                result = None
+                matched = False
+
+                if action.action_type == 'regex':
+                    if action.qr_code_pattern and re.match(action.qr_code_pattern, qr_data):
+                        matched = True
+                        result = action_func(qr_data)
+                
+                elif action.action_type == 'script':
+                    # スクリプト判定では、スクリプト自体が判定と結果返却を行う
                     result = action_func(qr_data)
+                    if result is not None:
+                        matched = True
 
-                    # スクリプトが何も返さなかった場合のデフォルト値
+                if matched:
+                    # スクリプトがNoneを返した場合、それは「マッチしなかった」と見なす
                     if result is None:
-                        result = 'Action executed successfully.'
-                    
+                        continue
+
                     return Response({
                         'status': 'success',
                         'action_name': action.name,
-                        'result': result
+                        'result': result,
                     })
+
             except re.error as e:
                 # パターンが無効な場合はログに記録するなど
                 # logger.warning(f"Invalid regex pattern for action '{action.name}': {e}")
@@ -386,7 +391,7 @@ def run_action(qr_data):
                 return Response({
                     'status': 'error',
                     'action_name': action.name,
-                    'message': f"An error occurred while executing action: {e}"
+                    'message': f"An error occurred while executing action '{action.name}': {e}"
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'status': 'not_found', 'message': 'No matching action found for the given QR data.'}, status=status.HTTP_404_NOT_FOUND)
