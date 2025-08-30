@@ -264,7 +264,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                     defaults={'quantity': received_quantity}
                 )
                 if not created:
-                    inventory.quantity = F('quantity') + received_quantity
+                    inventory.quantity += received_quantity
                     inventory.save()
 
                 # 3. Create Stock Movement
@@ -275,7 +275,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
                 )
 
                 # 4. Update Purchase Order status
-                po.received_quantity = F('received_quantity') + received_quantity
+                po.received_quantity += received_quantity
                 po.save()
                 po.refresh_from_db()
 
