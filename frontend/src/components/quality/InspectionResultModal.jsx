@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../../utils/cookies';
+import authFetch from '../../utils/api';
 import './InspectionResultModal.css';
 
 const InspectionResultModal = ({ item, onClose, onSuccess }) => {
@@ -16,7 +16,7 @@ const InspectionResultModal = ({ item, onClose, onSuccess }) => {
     setError(null);
     try {
       // APIエンドポイントをViewSetのカスタムアクションのパスに修正
-      const response = await fetch(`/api/quality/inspection-items/${item.id}/form-data/`);
+      const response = await authFetch(`/api/quality/inspection-items/${item.id}/form-data/`);
       if (!response.ok) {
         const errorText = await response.text(); // エラーレスポンスの本文を取得
         throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
@@ -83,11 +83,9 @@ const InspectionResultModal = ({ item, onClose, onSuccess }) => {
     submissionData.append('measurement_details_payload', JSON.stringify(measurementDetailsPayload));
 
     try {
-      const csrfToken = getCookie('csrftoken');
       // APIエンドポイントをViewSetのカスタムアクションのパスに修正
-      const response = await fetch(`/api/quality/inspection-items/${item.id}/record-result/`, {
+      const response = await authFetch(`/api/quality/inspection-items/${item.id}/record-result/`, {
         method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken },
         body: submissionData,
       });
       const result = await response.json();

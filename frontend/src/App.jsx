@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import './App.css';
-import { getCookie } from './utils/cookies.js';
+import authFetch from './utils/api.js';
 import Header from './components/Header.jsx';
 import SideMenu from './components/SideMenu.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -74,46 +74,53 @@ const MobileRedirector = () => {
 
 function AppContent() {
   const location = useLocation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
   const [isStaff, setIsStaff] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setIsAuthenticated(false);
+    setIsStaff(false);
+  }, []);
+
   const checkAuth = useCallback(async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setLoading(false);
+      setIsAuthenticated(false);
+      setIsStaff(false);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/users/session/', { credentials: 'include' });
+      const res = await authFetch('/api/users/session/');
       if (res.ok) {
         const json = await res.json();
         setIsAuthenticated(json.isAuthenticated);
         setIsStaff(json.isStaff || json.isSuperuser);
       } else {
-        // 403 Forbiddenなどのエラーはここで処理
-        setIsAuthenticated(false);
-        setIsStaff(false);
+        handleLogout();
       }
     } catch (e) {
-      setIsAuthenticated(false);
-      setIsStaff(false);
+      console.error("Auth check failed:", e);
+      handleLogout();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [handleLogout]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
-  const onLoginSuccess = async () => { await checkAuth(); };
+  useEffect(() => {
+    window.addEventListener('logout', handleLogout);
+    return () => window.removeEventListener('logout', handleLogout);
+  }, [handleLogout]);
 
-  const onLogout = async () => {
-    const csrfToken = getCookie('csrftoken');
-    await fetch('/api/users/logout/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-      credentials: 'include'
-    });
-    setIsAuthenticated(false);
-    setIsStaff(false);
-  };
+  const onLoginSuccess = async () => { await checkAuth(); };
 
   const toggleMenu = () => setMenuOpen(prev => !prev);
   const closeMenu = () => setMenuOpen(false);
@@ -167,7 +174,7 @@ function AppContent() {
                   isStaffOrSuperuser={isStaff}
                   onVersionClick={() => setVersionModalOpen(true)}
                   onLinkClick={closeMenu}
-                  onLogout={onLogout}
+                  onLogout={handleLogout}
                   isAuthenticated={isAuthenticated}
                 />
                 {menuOpen && <div id="menu-overlay" onClick={closeMenu} />}
@@ -179,7 +186,7 @@ function AppContent() {
           }
         >
           {/* Desktop Protected Routes */}
-          <Route path="/" element={<TopPage isStaffOrSuperuser={isStaff} isAuthenticated={isAuthenticated} onLogout={onLogout} />} />
+          <Route path="/" element={<TopPage isStaffOrSuperuser={isStaff} isAuthenticated={isAuthenticated} onLogout={handleLogout} />} />
           <Route path="/inventory/inquiry" element={<InventoryInquiry />} />
           <Route path="/inventory/stock-movement-history" element={<StockMovementHistory />} />
           <Route path="/inventory/shipment" element={<ShipmentSchedule />} />
@@ -206,7 +213,7 @@ function AppContent() {
         </Route>
 
         {/* Mobile Protected Routes */}
-        <Route element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileLayout onLogout={onLogout} /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute isAuthenticated={isAuthenticated}><MobileLayout onLogout={handleLogout} /></ProtectedRoute>}>
           <Route path="/mobile" element={<MobileTopPage />} />
           <Route path="/mobile/goods-receipt" element={<MobileGoodsReceiptPage />} />
           <Route path="/mobile/goods-issue" element={<MobileGoodsIssuePage />} />

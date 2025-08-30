@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './LoginPage.css'; // Add some basic styling
-import { getCookie } from '../utils/cookies.js';
 
 const LoginPage = ({ onLoginSuccess }) => {
   const [customId, setCustomId] = useState('');
@@ -16,32 +15,25 @@ const LoginPage = ({ onLoginSuccess }) => {
     e.preventDefault();
     setError('');
 
-    const csrfToken = getCookie('csrftoken');
-    if (!csrfToken) {
-      setError('Could not get CSRF token. Please refresh the page.');
-      return;
-    }
-
     try {
-      // NOTE: This assumes a JSON-based API endpoint at /api/users/login/
-      // This may need to be created in the Django backend.
-      const response = await fetch('/api/users/login/', {
+      const response = await fetch('/api/users/token/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
         },
+        // CustomUserのUSERNAME_FIELDである'custom_id'をキーとして送信
         body: JSON.stringify({ custom_id: customId, password }),
-        credentials: 'include', // クロスオリジンリクエストでクッキーを送信するために必要
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        // ログイン成功後、親コンポーネント(App.jsx)が状態を更新し、
-        // 自動的にリダイレクト処理を行うため、ここでのnavigateは不要です。
+        // トークンをlocalStorageに保存
+        localStorage.setItem('access_token', data.access);
+        localStorage.setItem('refresh_token', data.refresh);
+        // Appコンポーネントにログイン成功を通知
         await onLoginSuccess();
       } else {
-        // Parse error message from backend for more detailed feedback
-        const data = await response.json().catch(() => null);
         let errorMessage = 'Login failed. Please check your credentials and try again.'; // Default message
         if (data) {
             if (data.non_field_errors) {

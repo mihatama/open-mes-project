@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { getCookie } from '../../utils/cookies.js';
 import './MobileLoginPage.css';
 
 const MobileLoginPage = ({ onLoginSuccess }) => {
@@ -11,27 +10,24 @@ const MobileLoginPage = ({ onLoginSuccess }) => {
         e.preventDefault();
         setError('');
 
-        const csrfToken = getCookie('csrftoken');
-        if (!csrfToken) {
-            setError('CSRFトークンを取得できませんでした。ページをリロードしてください。');
-            return;
-        }
-
         try {
-            const response = await fetch('/api/users/login/', {
+            const response = await fetch('/api/users/token/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
                 },
+                // CustomUserのUSERNAME_FIELDである'custom_id'をキーとして送信
                 body: JSON.stringify({ custom_id: customId, password }),
-                credentials: 'include',
             });
 
+            const data = await response.json();
+
             if (response.ok) {
+                // トークンをlocalStorageに保存
+                localStorage.setItem('access_token', data.access);
+                localStorage.setItem('refresh_token', data.refresh);
                 await onLoginSuccess();
             } else {
-                const data = await response.json().catch(() => null);
                 let errorMessage = 'ログインに失敗しました。ユーザー名とパスワードを確認してください。'; // デフォルトメッセージ
                 if (data) {
                     if (data.non_field_errors) {

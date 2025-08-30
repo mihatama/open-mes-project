@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 import os
 import environ
@@ -81,8 +82,8 @@ INSTALLED_APPS = [
     'django_vite',
     'debug_toolbar',
     'rest_framework',
-    'rest_framework.authtoken',
     'django_static_md5url',
+    'rest_framework_simplejwt',
 
     # Project apps
     'base.apps.BaseConfig',
@@ -213,9 +214,21 @@ SILENCED_SYSTEM_CHECKS = ['django_vite.W001']
 # Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication', # 追加
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ]
+}
+
+# djangorestframework-simplejwt settings
+SIMPLE_JWT = {
+    # アクセストークンの有効期間
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    # リフレッシュトークンの有効期間
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 # 本番環境ではWhiteNoiseが圧縮ファイルを配信できるように設定

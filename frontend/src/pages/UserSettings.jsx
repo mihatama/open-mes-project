@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 import Modal from '../components/Modal';
 
 const UserSettings = () => {
@@ -41,16 +41,7 @@ const UserSettings = () => {
     setLoading(true);
     setError('');
     try {
-      const [profileRes, tokenRes] = await Promise.all([
-        fetch('/api/users/settings/', {
-          headers: { 'Accept': 'application/json' },
-          credentials: 'include',
-        }),
-        fetch('/api/users/settings/token/', {
-          headers: { 'Accept': 'application/json' },
-          credentials: 'include',
-        })
-      ]);
+      const [profileRes, tokenRes] = await Promise.all([authFetch('/api/users/settings/'), authFetch('/api/users/settings/token/')]);
 
       if (!profileRes.ok) {
         const errorData = await profileRes.json().catch(() => ({ detail: 'ユーザーデータの読み込みに失敗しました。' }));
@@ -97,20 +88,13 @@ const UserSettings = () => {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileErrors({});
-    const csrfToken = getCookie('csrftoken');
     try {
-      const response = await fetch('/api/users/settings/', {
+      const response = await authFetch('/api/users/settings/', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-          'Accept': 'application/json',
-        },
         body: JSON.stringify({
           username: profileForm.username,
           email: profileForm.email,
         }),
-        credentials: 'include',
       });
       const data = await response.json();
       if (!response.ok) {
@@ -128,17 +112,10 @@ const UserSettings = () => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPasswordErrors({});
-    const csrfToken = getCookie('csrftoken');
     try {
-      const response = await fetch('/api/users/settings/password/', {
+      const response = await authFetch('/api/users/settings/password/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-          'Accept': 'application/json',
-        },
         body: JSON.stringify(passwordForm),
-        credentials: 'include',
       });
       const data = await response.json();
       if (!response.ok) {
@@ -159,17 +136,8 @@ const UserSettings = () => {
     if (!window.confirm('トークンを再生成しますか？現在のトークンは無効になります。')) {
       return;
     }
-    const csrfToken = getCookie('csrftoken');
     try {
-      const response = await fetch('/api/users/settings/token/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-          'Accept': 'application/json',
-        },
-        credentials: 'include',
-      });
+      const response = await authFetch('/api/users/settings/token/', { method: 'POST' });
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.error || data.detail || 'トークンの再生成に失敗しました。');

@@ -1,12 +1,18 @@
 from django.urls import path, include
 # APIビューは `users/rest.py` に定義されていると想定
 from . import rest as rest_views
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 app_name = 'users_api'
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [
-    path('login/', rest_views.CustomObtainAuthToken.as_view(), name='api_login'),
+    # JWT認証
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', rest_views.APILogoutView.as_view(), name='api_logout'),
     path('session/', rest_views.get_session_info, name='api_session_info'),
     # API endpoints for user settings
