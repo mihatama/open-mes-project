@@ -37,10 +37,10 @@ const MobileGoodsReceiptPage = () => {
 
     const params = new URLSearchParams();
     if (searchTerm) {
-      // Search by order number, part number, etc.
-      params.append('search', searchTerm);
+      // General search for mobile view
+      params.append('search_q', searchTerm);
     }
-    params.append('status', 'pending'); // Mobile view is for pending receipts
+    params.append('search_status', 'pending'); // Mobile view is for pending receipts
     const apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
 
     try {
@@ -204,7 +204,7 @@ const MobileGoodsReceiptPage = () => {
     }
 
     try {
-      const response = await fetch('/api/inventory/purchase-receipts/process/', {
+      const response = await fetch('/api/inventory/purchase-orders/process-receipt/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
