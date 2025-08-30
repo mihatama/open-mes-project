@@ -269,7 +269,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
                 # 3. Create Stock Movement
                 StockMovement.objects.create(
-                    part_number=po.part_number, movement_type='receipt', quantity=received_quantity,
+                    part_number=po.part_number, movement_type='incoming', quantity=received_quantity,
                     warehouse=warehouse, location=location, reference_document=f"PO: {po.order_number}",
                     description=f"発注番号 {po.order_number} の入庫", operator=operator
                 )
