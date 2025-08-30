@@ -44,7 +44,7 @@ const MobileGoodsReceiptPage = () => {
     const apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
 
     try {
-      const response = await fetch(apiUrl);
+      const response = await fetch(apiUrl, { credentials: 'include' });
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
@@ -125,6 +125,7 @@ const MobileGoodsReceiptPage = () => {
           'X-CSRFToken': getCookie('csrftoken'),
         },
         body: JSON.stringify({ qr_data: decodedText }),
+        credentials: 'include',
       });
 
       if (response.status === 404) {
@@ -213,6 +214,7 @@ const MobileGoodsReceiptPage = () => {
           location: receiptFormData.location.trim(),
           warehouse: receiptFormData.warehouse.trim(),
         }),
+        credentials: 'include',
       });
       const result = await response.json();
       if (response.ok) {
