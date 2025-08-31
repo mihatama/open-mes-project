@@ -56,7 +56,7 @@ const MobileLocationTransferPage = () => {
 
     try {
       const params = new URLSearchParams({ warehouse: warehouse, location: sourceLocation });
-      const response = await fetch(`/api/inventory/by-location/?${params.toString()}`, {
+      const response = await fetch(`/api/inventory/inventories/by-location/?${params.toString()}`, {
         credentials: 'include',
       });
 
@@ -110,15 +110,13 @@ const MobileLocationTransferPage = () => {
     showMessage('', '', true);
 
     const payload = {
-      warehouse: warehouse,
-      source_location: sourceLocation,
-      part_number: selectedItem.part_number,
-      quantity_to_move: transferQuantity,
+      quantity_to_move: parseInt(transferQuantity, 10),
+      target_warehouse: warehouse, // 移動は同一倉庫内を想定
       target_location: targetLocation,
     };
 
     try {
-      const response = await fetch("/api/inventory/location-transfer/", {
+      const response = await fetch(`/api/inventory/inventories/${selectedItem.id}/move/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify(payload),
