@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 import Modal from '../components/Modal';
 import './InventoryInquiry.css'; // 既存のCSSを利用してファイル未発見エラーを回避
 
@@ -61,11 +61,11 @@ const GoodsReceipt = () => {
 
     try {
       const [poSettingsResponse, grSettingsResponse, dataResponse, poFieldsResponse, grFieldsResponse] = await Promise.all([
-        fetch(poSettingsUrl, { credentials: 'include' }),
-        fetch(grSettingsUrl, { credentials: 'include' }),
-        fetch(dataApiUrl, { credentials: 'include' }),
-        fetch(poFieldsUrl, { credentials: 'include' }),
-        fetch(grFieldsUrl, { credentials: 'include' }),
+        authFetch(poSettingsUrl),
+        authFetch(grSettingsUrl),
+        authFetch(dataApiUrl),
+        authFetch(poFieldsUrl),
+        authFetch(grFieldsUrl),
       ]);
 
       // レスポンスのJSONボディは一度しか読み取れないため、先にパースして変数に格納します
@@ -194,7 +194,6 @@ const GoodsReceipt = () => {
   const handleReceiptSubmit = async (e) => {
     e.preventDefault();
     setReceiptModal(prev => ({ ...prev, error: '', success: '' }));
-    const csrftoken = getCookie('csrftoken');
     
     const receivedQuantity = parseInt(receiptFormData.received_quantity, 10);
     if (isNaN(receivedQuantity) || receivedQuantity <= 0) {
@@ -203,16 +202,14 @@ const GoodsReceipt = () => {
     }
 
     try {
-      const response = await fetch('/api/inventory/purchase-orders/process-receipt/', {
+      const response = await authFetch('/api/inventory/purchase-orders/process-receipt/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
           purchase_order_id: receiptModal.order.id,
           received_quantity: receivedQuantity,
           location: receiptFormData.location.trim(),
           warehouse: receiptFormData.warehouse.trim(),
         }),
-        credentials: 'include',
       });
       const result = await response.json();
       if (response.ok) {

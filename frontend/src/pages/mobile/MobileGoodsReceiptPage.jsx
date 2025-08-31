@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCookie } from '../../utils/cookies';
+import authFetch from '../../utils/api';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileGoodsReceiptPage.css';
 import './MobileLocationTransferPage.css'; // スタイルを再利用
@@ -44,7 +44,7 @@ const MobileGoodsReceiptPage = () => {
     const apiUrl = `/api/inventory/purchase-orders/?${params.toString()}`;
 
     try {
-      const response = await fetch(apiUrl, { credentials: 'include' });
+      const response = await authFetch(apiUrl);
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
@@ -118,14 +118,9 @@ const MobileGoodsReceiptPage = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/base/qr-code-actions/execute/', {
+      const response = await authFetch('/api/base/qr-code-actions/execute/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCookie('csrftoken'),
-        },
         body: JSON.stringify({ qr_data: decodedText }),
-        credentials: 'include',
       });
 
       if (response.status === 404) {
@@ -192,7 +187,6 @@ const MobileGoodsReceiptPage = () => {
     e.preventDefault();
     setFormError('');
     setFormSuccess('');
-    const csrftoken = getCookie('csrftoken');
 
     const receivedQuantity = parseInt(receiptFormData.received_quantity, 10);
     if (isNaN(receivedQuantity) || receivedQuantity <= 0) {
@@ -205,16 +199,14 @@ const MobileGoodsReceiptPage = () => {
     }
 
     try {
-      const response = await fetch('/api/inventory/purchase-orders/process-receipt/', {
+      const response = await authFetch('/api/inventory/purchase-orders/process-receipt/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
           purchase_order_id: selectedOrder.id,
           received_quantity: receivedQuantity,
           location: receiptFormData.location.trim(),
           warehouse: receiptFormData.warehouse.trim(),
         }),
-        credentials: 'include',
       });
       const result = await response.json();
       if (response.ok) {

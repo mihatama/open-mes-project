@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getCookie } from '../../utils/cookies';
 import { useNavigate } from 'react-router-dom';
+import authFetch from '../../utils/api';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileLocationTransferPage.css'; // 新しいCSSファイルをインポート
 
@@ -56,9 +56,7 @@ const MobileLocationTransferPage = () => {
 
     try {
       const params = new URLSearchParams({ warehouse: warehouse, location: sourceLocation });
-      const response = await fetch(`/api/inventory/inventories/by-location/?${params.toString()}`, {
-        credentials: 'include',
-      });
+      const response = await authFetch(`/api/inventory/inventories/by-location/?${params.toString()}`);
 
       if (!response.ok) {
         const errData = await response.json();
@@ -116,11 +114,9 @@ const MobileLocationTransferPage = () => {
     };
 
     try {
-      const response = await fetch(`/api/inventory/inventories/${selectedItem.id}/move/`, {
+      const response = await authFetch(`/api/inventory/inventories/${selectedItem.id}/move/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
         body: JSON.stringify(payload),
-        credentials: 'include',
       });
       const result = await response.json();
 
@@ -197,12 +193,8 @@ const MobileLocationTransferPage = () => {
     showMessage('', ''); // Clear main message
 
     try {
-        const response = await fetch('/api/base/qr-code-actions/execute/', {
+        const response = await authFetch('/api/base/qr-code-actions/execute/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
-            },
             body: JSON.stringify({ qr_data: decodedText }),
         });
 

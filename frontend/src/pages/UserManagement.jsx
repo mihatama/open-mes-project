@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 
 const UserManagement = () => {
     const [users, setUsers] = useState([]);
@@ -24,9 +24,7 @@ const UserManagement = () => {
         try {
             // NOTE: This assumes a JSON-based API endpoint at /api/users/
             // This needs to be created in the Django backend.
-            const response = await fetch('/api/users/', {
-                credentials: 'include',
-            });
+            const response = await authFetch('/api/users/');
             if (!response.ok) {
                 const data = await response.json().catch(() => null);
                 throw new Error(data?.detail || `HTTP error! status: ${response.status}`);
@@ -48,13 +46,10 @@ const UserManagement = () => {
     const handleDelete = async (userId, userCustomId) => {
         if (window.confirm(`本当にユーザー "${userCustomId}" を削除しますか？この操作は元に戻せません。`)) {
             setMessage({ text: '', type: '' });
-            const csrfToken = getCookie('csrftoken');
             try {
                 // NOTE: This assumes a DELETE endpoint at /api/users/<id>/
-                const response = await fetch(`/api/users/${userId}/`, {
+                const response = await authFetch(`/api/users/${userId}/`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRFToken': csrfToken },
-                    credentials: 'include',
                 });
 
                 if (response.ok) {

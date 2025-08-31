@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Table, Button, Form, Spinner, Alert, Row, Col, Tooltip, OverlayTrigger } from 'react-bootstrap';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 
 // This could be moved to a shared constants file
 const DATA_TYPE_CHOICES = [
@@ -27,8 +27,8 @@ const ModelDisplaySettings = () => {
         setSaveStatus(prev => ({ ...prev, show: false }));
         try {
             const [settingsRes, fieldsRes] = await Promise.all([
-                fetch(`/api/base/model-display-settings/?data_type=${dataType}`),
-                fetch(`/api/base/model-fields/?data_type=${dataType}`)
+                authFetch(`/api/base/model-display-settings/?data_type=${dataType}`),
+                authFetch(`/api/base/model-fields/?data_type=${dataType}`)
             ]);
 
             if (!settingsRes.ok) throw new Error(`表示設定の取得に失敗しました: ${settingsRes.statusText}`);
@@ -95,12 +95,8 @@ const ModelDisplaySettings = () => {
         }));
 
         try {
-            const response = await fetch(`/api/base/model-display-settings/bulk-save/?data_type=${selectedDataType}`, {
+            const response = await authFetch(`/api/base/model-display-settings/bulk-save/?data_type=${selectedDataType}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify(payload),
             });
             const result = await response.json();

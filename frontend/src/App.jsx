@@ -148,18 +148,12 @@ function AppContent() {
         {/* Public Login Routes */}
         <Route
           path="/login"
-          element={
-            isAuthenticated
-              ? <Navigate to="/" replace />
-              : <LoginPage onLoginSuccess={onLoginSuccess} />
+          element={<LoginPage onLoginSuccess={onLoginSuccess} isAuthenticated={isAuthenticated} />
           }
         />
         <Route
           path="/mobile/login"
-          element={
-            isAuthenticated
-              ? <Navigate to="/mobile" replace />
-              : <MobileLoginPage onLoginSuccess={onLoginSuccess} />
+          element={<MobileLoginPage onLoginSuccess={onLoginSuccess} isAuthenticated={isAuthenticated} />
           }
         />
 

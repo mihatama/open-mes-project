@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './LoginPage.css'; // Add some basic styling
 
-const LoginPage = ({ onLoginSuccess }) => {
+const LoginPage = ({ onLoginSuccess, isAuthenticated }) => {
   const [customId, setCustomId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -10,6 +10,12 @@ const LoginPage = ({ onLoginSuccess }) => {
   const location = useLocation();
 
   const from = location.state?.from?.pathname || "/";
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -53,6 +59,10 @@ const LoginPage = ({ onLoginSuccess }) => {
       setError('An error occurred during login. Please try again later.');
     }
   };
+
+  if (isAuthenticated) {
+    return null; // Or a loading spinner, while the redirect happens
+  }
 
   return (
     <div className="login-page-container">

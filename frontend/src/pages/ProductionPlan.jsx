@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../utils/cookies'; // Assuming this utility exists
+import authFetch from '../utils/api';
 import Modal from '../components/Modal'; // Assuming this component exists
 
 const ProductionPlan = () => {
@@ -64,7 +64,7 @@ const ProductionPlan = () => {
     const url = buildSearchQuery(pageUrl);
 
     try {
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await authFetch(url);
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
@@ -157,7 +157,7 @@ const ProductionPlan = () => {
       const fetchRequiredParts = async () => {
         setAllocateModal(prev => ({ ...prev, partsLoading: true, partsError: null }));
         try {
-          const response = await fetch(`/api/production/plans/${allocateModal.plan.id}/required-parts/`);
+          const response = await authFetch(`/api/production/plans/${allocateModal.plan.id}/required-parts/`);
           if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             const errorMessage = errorData?.detail || response.statusText || `サーバーエラー (${response.status})`;
@@ -203,11 +203,9 @@ const ProductionPlan = () => {
       return;
     }
 
-    const csrfToken = getCookie('csrftoken');
     try {
-      const response = await fetch(`/api/production/plans/${plan.id}/allocate-materials/`, {
+      const response = await authFetch(`/api/production/plans/${plan.id}/allocate-materials/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({ allocations: allocationsData })
       });
       const data = await response.json();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import InspectionResultModal from '../components/quality/InspectionResultModal';
+import authFetch from '../utils/api';
 
 const AcceptanceInspection = () => {
   const [inspectionItems, setInspectionItems] = useState([]);
@@ -13,7 +14,7 @@ const AcceptanceInspection = () => {
       setError(null);
       try {
         // 検査項目マスターのリストを取得
-        const response = await fetch('/api/quality/inspection-items/');
+        const response = await authFetch('/api/quality/inspection-items/');
         if (!response.ok) {
           const errorText = await response.text(); // エラーレスポンスの本文を取得
           throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);

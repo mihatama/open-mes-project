@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Table, Button, Modal, Form, Spinner, Alert, Row, Col } from 'react-bootstrap';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 
 const ACTION_TEMPLATES = {
     'モバイル入庫処理（検索）': {
@@ -67,7 +67,7 @@ const QrCodeActionSettings = () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(API_URL);
+            const response = await authFetch(API_URL);
             if (!response.ok) {
                 throw new Error(`サーバーエラー: ${response.status}`);
             }
@@ -144,12 +144,8 @@ const QrCodeActionSettings = () => {
         const method = isNew ? 'POST' : 'PUT';
 
         try {
-            const response = await fetch(url, {
+            const response = await authFetch(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify(currentAction),
             });
             const result = await response.json();
@@ -169,9 +165,8 @@ const QrCodeActionSettings = () => {
     const handleDelete = async (id) => {
         if (window.confirm('このアクションを本当に削除しますか？')) {
             try {
-                const response = await fetch(`${API_URL}${id}/`, {
+                const response = await authFetch(`${API_URL}${id}/`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
                 });
                 if (!response.ok) {
                     throw new Error('削除に失敗しました。');

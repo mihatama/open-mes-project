@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Table, Button, Form, Spinner, Alert, Row, Col, Tooltip, OverlayTrigger } from 'react-bootstrap';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 
 // This could be moved to a shared constants file
 const DATA_TYPE_CHOICES = [
@@ -55,8 +55,8 @@ const PageDisplaySettings = () => {
             const dataTypesToFetch = config.fetch;
 
             const promises = dataTypesToFetch.flatMap(type => [
-                fetch(`/api/base/model-display-settings/?data_type=${type}`),
-                fetch(`/api/base/model-fields/?data_type=${type}`)
+                authFetch(`/api/base/model-display-settings/?data_type=${type}`),
+                authFetch(`/api/base/model-fields/?data_type=${type}`)
             ]);
 
             const responses = await Promise.all(promises);
@@ -191,12 +191,8 @@ const PageDisplaySettings = () => {
                     return Promise.resolve({ ok: true, json: () => Promise.resolve({ message: '' }) });
                 }
 
-                return fetch(`/api/base/model-display-settings/bulk-save/?data_type=${type}`, {
+                return authFetch(`/api/base/model-display-settings/bulk-save/?data_type=${type}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
                     body: JSON.stringify(payload),
                 });
             });

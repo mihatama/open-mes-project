@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 import Modal from '../components/Modal';
 
 const GoodsIssue = () => {
@@ -17,7 +17,7 @@ const GoodsIssue = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/inventory/sales-orders/?search_status=pending');
+      const response = await authFetch('/api/inventory/sales-orders/?search_status=pending');
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -63,15 +63,9 @@ const GoodsIssue = () => {
       return;
     }
 
-    const csrfToken = getCookie('csrftoken');
-
     try {
-      const response = await fetch('/api/inventory/sales-orders/issue/', {
+      const response = await authFetch('/api/inventory/sales-orders/issue/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
         body: JSON.stringify({
           order_id: selectedOrder.id,
           quantity_to_ship: quantityToShip,

@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Form, Table, Spinner, Alert } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import authFetch from '../utils/api';
 import { useDropzone } from 'react-dropzone';
-
-// Helper to get CSRF token from cookies
-const getCsrfToken = () => {
-    const token = document.cookie.split('; ')
-        .find(row => row.startsWith('csrftoken='))
-        ?.split('=')[1];
-    return token || '';
-};
 
 // Placeholder for form components. In a real app, these would be more complex.
 const GenericForm = ({ fields, formData, setFormData }) => (
@@ -174,7 +167,7 @@ const DataImport = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await fetch(DATA_CONFIG[type].listUrl, { credentials: 'include' });
+            const response = await authFetch(DATA_CONFIG[type].listUrl);
             if (!response.ok) throw new Error('Network response was not ok');
             const result = await response.json();
             // Handle both paginated (results) and custom (data) API responses
@@ -202,7 +195,7 @@ const DataImport = () => {
             setIsLoading(true);
             setError(null); // エラーをリセット
             try {
-                const response = await fetch(config.detailUrl(recordId), { credentials: 'include' });
+                const response = await authFetch(config.detailUrl(recordId));
                 if (!response.ok) throw new Error('Failed to fetch record details.');
                 const result = await response.json();
                 if (result.status === 'success') {
@@ -255,11 +248,9 @@ const DataImport = () => {
         const method = recordId ? 'PUT' : 'POST';
 
         try {
-            const response = await fetch(url, {
+            const response = await authFetch(url, {
                 method: method,
                 body: JSON.stringify(formData),
-                headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
-                credentials: 'include'
             });
             const result = await response.json();
             if (response.ok) {
@@ -277,7 +268,7 @@ const DataImport = () => {
         if (!itemToDelete) return;
         const { type, id } = itemToDelete;
         try {
-            const response = await fetch(DATA_CONFIG[type].deleteUrl(id), { method: 'DELETE', headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
+            const response = await authFetch(DATA_CONFIG[type].deleteUrl(id), { method: 'DELETE' });
             if (response.ok) {
                 // For DELETE, 204 No Content is a common success response with no body.
                 if (response.status !== 204) {
@@ -314,7 +305,7 @@ const DataImport = () => {
 
         try {
             // fetchを使用してプロキシ経由でリクエストを送信します
-            const response = await fetch(csvTemplateUrl, { credentials: 'include' });
+            const response = await authFetch(csvTemplateUrl);
             if (!response.ok) {
                 throw new Error(`サーバーエラー: ${response.status} ${response.statusText}`);
             }
@@ -351,7 +342,7 @@ const DataImport = () => {
 
         setIsLoading(true);
         try {
-            const response = await fetch(uploadUrl, { method: 'POST', body: uploadData, headers: { 'X-CSRFToken': getCsrfToken() }, credentials: 'include' });
+            const response = await authFetch(uploadUrl, { method: 'POST', body: uploadData });
             const result = await response.json();
             setCsvResult({ message: result.message, isError: result.status !== 'success' && result.status !== 'partial_success', errors: result.errors || [] });
         } catch (err) {

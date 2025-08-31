@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './MobileLoginPage.css';
 
-const MobileLoginPage = ({ onLoginSuccess }) => {
+const MobileLoginPage = ({ onLoginSuccess, isAuthenticated }) => {
     const [customId, setCustomId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const navigate = useNavigate();
+
+    // Redirect if already authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            // For mobile, always redirect to the mobile top page after login.
+            navigate('/mobile', { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -28,16 +38,11 @@ const MobileLoginPage = ({ onLoginSuccess }) => {
                 localStorage.setItem('refresh_token', data.refresh);
                 await onLoginSuccess();
             } else {
-                let errorMessage = 'ログインに失敗しました。ユーザー名とパスワードを確認してください。'; // デフォルトメッセージ
-                if (data) {
-                    if (data.non_field_errors) {
-                        errorMessage = data.non_field_errors.join(' ');
-                    } else if (data.detail) {
-                        errorMessage = data.detail;
-                    } else if (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length > 0) {
-                        const fieldErrors = Object.entries(data).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : String(value)}`).join('; ');
-                        if (fieldErrors) errorMessage = fieldErrors;
-                    }
+                let errorMessage = 'ログインに失敗しました。ユーザー名とパスワードを確認してください。';
+                if (data?.detail) {
+                    errorMessage = data.detail;
+                } else if (data?.non_field_errors) {
+                    errorMessage = data.non_field_errors.join(' ');
                 }
                 setError(errorMessage);
             }
@@ -46,6 +51,10 @@ const MobileLoginPage = ({ onLoginSuccess }) => {
             setError('ログイン中にエラーが発生しました。再度試してください。');
         }
     };
+
+    if (isAuthenticated) {
+        return null; // Or a loading spinner
+    }
 
     return (
         <div className="mobile-login-container">

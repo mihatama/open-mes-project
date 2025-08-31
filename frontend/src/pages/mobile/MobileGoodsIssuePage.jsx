@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Container, Form, Button, Row, Col, Card, Badge, Modal, Spinner, Alert, Pagination as BootstrapPagination, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { getCookie } from '../../utils/cookies';
+import authFetch from '../../utils/api';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import './MobileLocationTransferPage.css'; // スタイルを再利用
 
@@ -53,7 +53,7 @@ const MobileGoodsIssuePage = () => {
         if (status) params.append('search_status', status);
 
         try {
-            const response = await fetch(`/api/inventory/sales-orders/?${params.toString()}`);
+            const response = await authFetch(`/api/inventory/sales-orders/?${params.toString()}`);
             if (!response.ok) {
                 throw new Error('データの読み込みに失敗しました。');
             }
@@ -129,12 +129,8 @@ const MobileGoodsIssuePage = () => {
         setError(null);
 
         try {
-            const response = await fetch('/api/base/qr-code-actions/execute/', {
+            const response = await authFetch('/api/base/qr-code-actions/execute/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify({ qr_data: decodedText }),
             });
 
@@ -229,12 +225,8 @@ const MobileGoodsIssuePage = () => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('/api/inventory/sales-orders/issue/', {
+            const response = await authFetch('/api/inventory/sales-orders/issue/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify({
                     order_id: selectedOrder.id,
                     quantity_to_ship: qty,

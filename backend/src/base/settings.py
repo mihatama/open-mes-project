@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'django_static_md5url',
     'rest_framework_simplejwt',
 
+    'rest_framework_simplejwt.token_blacklist',
     # Project apps
     'base.apps.BaseConfig',
     'users.apps.UsersConfig',
@@ -224,8 +225,9 @@ SIMPLE_JWT = {
     # アクセストークンの有効期間
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     # リフレッシュトークンの有効期間
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),

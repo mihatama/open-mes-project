@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 import Modal from '../components/Modal';
 import './InventoryInquiry.css';
 
@@ -63,9 +63,9 @@ const InventoryInquiry = () => {
 
     try {
       const [settingsResponse, fieldsResponse, dataResponse] = await Promise.all([
-        fetch(settingsUrl),
-        fetch(fieldsUrl),
-        fetch(apiUrl, { credentials: 'include' })
+        authFetch(settingsUrl),
+        authFetch(fieldsUrl),
+        authFetch(apiUrl)
       ]);
 
       if (settingsResponse.ok && fieldsResponse.ok) {
@@ -104,7 +104,7 @@ const InventoryInquiry = () => {
         const partNumbers = [...new Set(inventoryResults.map(item => item.part_number).filter(Boolean))];
         if (partNumbers.length > 0) {
           const itemsUrl = `/api/master/items/?code__in=${partNumbers.join(',')}`;
-          const itemsResponse = await fetch(itemsUrl, { credentials: 'include' });
+          const itemsResponse = await authFetch(itemsUrl);
           if (itemsResponse.ok) {
             const itemsData = await itemsResponse.json();
             const items = itemsData.results || itemsData.data || itemsData || [];
@@ -200,18 +200,15 @@ const InventoryInquiry = () => {
   const handleModifySubmit = async (e) => {
     e.preventDefault();
     setModifyModal(prev => ({ ...prev, error: '', success: '' }));
-    const csrftoken = getCookie('csrftoken');
     try {
       // Use PATCH for partial updates. The warehouse should not be changed here.
       // Changing the warehouse is a 'move' operation.
-      const response = await fetch(`/api/inventory/inventories/${modifyModal.item.id}/`, {
+      const response = await authFetch(`/api/inventory/inventories/${modifyModal.item.id}/`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
           quantity: modifyFormData.quantity,
           location: modifyFormData.location.trim(),
         }),
-        credentials: 'include',
       });
       const result = await response.json();
       if (response.ok) {
@@ -242,17 +239,14 @@ const InventoryInquiry = () => {
       setMoveModal(prev => ({ ...prev, error: '移動先倉庫は必須です。' }));
       return;
     }
-    const csrftoken = getCookie('csrftoken');
     try {
-      const response = await fetch(`/api/inventory/inventories/${moveModal.item.id}/move/`, {
+      const response = await authFetch(`/api/inventory/inventories/${moveModal.item.id}/move/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
         body: JSON.stringify({
           quantity_to_move: quantityToMove,
           target_warehouse: moveFormData.target_warehouse.trim(),
           target_location: moveFormData.target_location.trim(),
         }),
-        credentials: 'include',
       });
       const result = await response.json();
       if (result.success) {

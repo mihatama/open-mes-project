@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Table, Button, Form, Spinner, Alert, Row, Col, Tooltip, OverlayTrigger } from 'react-bootstrap';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { getCookie } from '../utils/cookies';
+import authFetch from '../utils/api';
 
 const DATA_TYPE_CHOICES = [
     { value: 'item', label: '品番マスター' },
@@ -25,9 +25,9 @@ const CsvMappingSettings = () => {
         setSaveStatus(prev => ({ ...prev, show: false }));
         try {
             const [mappingsRes, fieldsRes, displaySettingsRes] = await Promise.all([
-                fetch(`/api/base/csv-mappings/?data_type=${dataType}`),
-                fetch(`/api/base/model-fields/?data_type=${dataType}`),
-                fetch(`/api/base/model-display-settings/?data_type=${dataType}`)
+                authFetch(`/api/base/csv-mappings/?data_type=${dataType}`),
+                authFetch(`/api/base/model-fields/?data_type=${dataType}`),
+                authFetch(`/api/base/model-display-settings/?data_type=${dataType}`)
             ]);
 
             if (!mappingsRes.ok) throw new Error(`既存マッピングの取得に失敗しました: ${mappingsRes.statusText}`);
@@ -101,12 +101,8 @@ const CsvMappingSettings = () => {
         }));
 
         try {
-            const response = await fetch(`/api/base/csv-mappings/bulk-save/?data_type=${selectedDataType}`, {
+            const response = await authFetch(`/api/base/csv-mappings/bulk-save/?data_type=${selectedDataType}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
                 body: JSON.stringify(payload),
             });
             const result = await response.json();
