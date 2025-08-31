@@ -135,6 +135,31 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     target_inventory.quantity += quantity_to_move
                     target_inventory.save()
 
+                # 在庫移動履歴を記録
+                operator = request.user if request.user.is_authenticated else None
+
+                # 移動元の履歴 (出庫)
+                StockMovement.objects.create(
+                    part_number=source_inventory.part_number,
+                    movement_type='outgoing',
+                    quantity=quantity_to_move,
+                    warehouse=source_inventory.warehouse,
+                    location=source_inventory.location,
+                    description=f"棚番移動: {target_warehouse} の {target_location} へ",
+                    operator=operator
+                )
+
+                # 移動先の履歴 (入庫)
+                StockMovement.objects.create(
+                    part_number=source_inventory.part_number,
+                    movement_type='incoming',
+                    quantity=quantity_to_move,
+                    warehouse=target_warehouse,
+                    location=target_location,
+                    description=f"棚番移動: {source_inventory.warehouse} の {source_inventory.location} から",
+                    operator=operator
+                )
+
             return Response({'success': True, 'message': '在庫を正常に移動しました。'})
 
         except Exception as e:
