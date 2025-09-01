@@ -215,7 +215,7 @@ SILENCED_SYSTEM_CHECKS = ['django_vite.W001']
 # Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication', # APIではJWT認証を主とするため無効化
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ]
 }
