@@ -15,7 +15,8 @@ router.register(r'qr-code-actions', QrCodeActionViewSet, basename='qr-code-actio
 urlpatterns = [
     path('info/', AppInfoView.as_view(), name='app-info'),
     path('health/', HealthCheckView.as_view(), name='health-check'),
-    # path('csv-template/', CsvColumnMappingViewSet.as_view({'get': 'csv_template'}), name='csv_template'),
     path('model-fields/', ModelFieldsView.as_view(), name='model-fields'),
+    path('csv-import-status/<str:pk>/', CsvColumnMappingViewSet.as_view({'get': 'get_task_status'}), name='csv-import-status'),
+    path('csv-import-cancel/<str:pk>/', CsvColumnMappingViewSet.as_view({'post': 'cancel_task'}), name='csv-import-cancel'),
     path('', include(router.urls)),
 ]

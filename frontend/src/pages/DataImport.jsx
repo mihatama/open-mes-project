@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Button, Modal, Form, Table, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Container, Row, Col, Card, Button, Modal, Form, Table, Spinner, Alert, ProgressBar } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import authFetch from '../utils/api';
 import { useDropzone } from 'react-dropzone';
@@ -162,10 +162,16 @@ const DataImport = () => {
     const [itemToDelete, setItemToDelete] = useState(null);
     const [csvResult, setCsvResult] = useState({ message: '', isError: false, errors: [] });
 
+    // CSV非同期アップロード関連のState
+    const [taskId, setTaskId] = useState(null);
+    const [taskStatus, setTaskStatus] = useState(null);
+    const [progress, setProgress] = useState(0);
+    const pollingInterval = useRef(null);
+
     const fetchListData = useCallback(async (type) => {
         if (!type) return;
         setIsLoading(true);
-        setError(null);
+        setError(null); // エラーをリセット
         try {
             const response = await authFetch(DATA_CONFIG[type].listUrl);
             if (!response.ok) throw new Error('Network response was not ok');
@@ -304,15 +310,13 @@ const DataImport = () => {
         if (!csvTemplateUrl) return;
 
         try {
-            // fetchを使用してプロキシ経由でリクエストを送信します
             const response = await authFetch(csvTemplateUrl);
             if (!response.ok) {
                 throw new Error(`サーバーエラー: ${response.status} ${response.statusText}`);
             }
 
-            // ヘッダーからファイル名を取得します
             const disposition = response.headers.get('Content-Disposition');
-            let filename = 'template.csv'; // デフォルトのファイル名
+            let filename = 'template.csv';
             if (disposition && disposition.includes('attachment')) {
                 const filenameMatch = /filename="([^"]+)"/.exec(disposition);
                 if (filenameMatch && filenameMatch[1]) {
@@ -333,6 +337,44 @@ const DataImport = () => {
         }
     };
 
+    const pollTaskStatus = useCallback(async (currentTaskId) => {
+        try {
+            const response = await authFetch(`/api/base/csv-import-status/${currentTaskId}/`);
+            const data = await response.json();
+
+            setTaskStatus(data.status);
+            setProgress(data.total > 0 ? Math.round((data.progress / data.total) * 100) : 0);
+
+            if (data.status === 'SUCCESS' || data.status === 'FAILURE' || data.status === 'REVOKED') {
+                clearInterval(pollingInterval.current);
+                setTaskId(null);
+                setIsLoading(false);
+                const resultData = data.result || {};
+                const message = `作成: ${resultData.created || 0}件, 更新: ${resultData.updated || 0}件`;
+                setCsvResult({ 
+                    message: data.status === 'SUCCESS' ? message : `エラーが発生しました: ${resultData.error}`,
+                    isError: data.status === 'FAILURE',
+                    errors: resultData.errors || [] 
+                });
+                setShowCsvResultModal(true);
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+            clearInterval(pollingInterval.current);
+            setTaskId(null);
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (taskId) {
+            pollingInterval.current = setInterval(() => pollTaskStatus(taskId), 2000);
+        } else {
+            clearInterval(pollingInterval.current);
+        }
+        return () => clearInterval(pollingInterval.current);
+    }, [taskId, pollTaskStatus]);
+
     const handleCsvUpload = async (e) => {
         e.preventDefault();
         if (!csvFile || !csvDataType) return;
@@ -341,16 +383,35 @@ const DataImport = () => {
         uploadData.append('csv_file', csvFile);
 
         setIsLoading(true);
+        setTaskId(null);
+        setTaskStatus(null);
+        setProgress(0);
+
         try {
             const response = await authFetch(uploadUrl, { method: 'POST', body: uploadData });
             const result = await response.json();
-            setCsvResult({ message: result.message, isError: result.status !== 'success' && result.status !== 'partial_success', errors: result.errors || [] });
+            if (response.status === 202 && result.task_id) {
+                setTaskId(result.task_id);
+                setTaskStatus('PENDING');
+            } else {
+                throw new Error(result.message || 'Upload failed to start');
+            }
         } catch (err) {
-            setCsvResult({ message: `アップロード中にエラーが発生しました: ${err.message}`, isError: true, errors: [] });
-        } finally {
-            setIsLoading(false);
+            setCsvResult({ message: `アップロード開始エラー: ${err.message}`, isError: true, errors: [] });
             setShowCsvResultModal(true);
+            setIsLoading(false);
+        } finally {
             setCsvFile(null);
+        }
+    };
+
+    const handleCancelUpload = async () => {
+        if (!taskId) return;
+        try {
+            await authFetch(`/api/base/csv-import-cancel/${taskId}/`, { method: 'POST' });
+            // Polling will handle the rest
+        } catch (error) {
+            console.error('Failed to cancel task', error);
         }
     };
 
@@ -394,7 +455,7 @@ const DataImport = () => {
             <Row className="g-3 align-items-end">
               <Col md={5}>
                 <Form.Label htmlFor="csvDataType">データ種類</Form.Label>
-                <Form.Select id="csvDataType" value={csvDataType} onChange={handleCsvDataTypeChange} required>
+                <Form.Select id="csvDataType" value={csvDataType} onChange={handleCsvDataTypeChange} required disabled={isLoading}>
                   <option value="" disabled>選択してください...</option>
                   {CSV_DATA_TYPES.map(group => (
                     <optgroup label={group.label} key={group.label}>
@@ -406,7 +467,7 @@ const DataImport = () => {
               <Col md={5}>
                 <Form.Label>CSVファイル <span className="text-muted small">(ドラッグ＆ドロップまたはクリックで選択)</span></Form.Label>
                 <div {...getRootProps()} style={{ border: '2px dashed #ccc', padding: '20px', textAlign: 'center', cursor: 'pointer', borderRadius: '.25rem', borderColor: isDragActive ? '#007bff' : '#ccc' }}>
-                  <input {...getInputProps()} />
+                  <input {...getInputProps()} disabled={isLoading} />
                   {csvFile ? <p className="my-2 small">{csvFile.name}</p> : <p className="my-2 small text-muted">ここにファイルをドラッグ＆ドロップするか、クリックして選択</p>}
                 </div>
               </Col>
@@ -420,6 +481,14 @@ const DataImport = () => {
               {csvTemplateUrl && <a href={csvTemplateUrl} onClick={handleTemplateDownload} className="btn btn-link btn-sm p-0">テンプレートCSVをダウンロード</a>}
             </div>
           </Form>
+          {taskId && (
+            <div className="mt-4">
+              <h5>アップロード処理中...</h5>
+              <ProgressBar animated now={progress} label={`${progress}%`} />
+              <p className="small text-muted mt-1">ステータス: {taskStatus}</p>
+              <Button variant="danger" size="sm" onClick={handleCancelUpload} className="mt-2">キャンセル</Button>
+            </div>
+          )}
         </Card.Body>
       </Card>
 

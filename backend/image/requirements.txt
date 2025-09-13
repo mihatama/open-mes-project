@@ -15,3 +15,5 @@ django-debug-toolbar==5.1.0
 django-cors-headers==4.4.0
 django-vite==3.1.0
 whitenoise[brotli]==6.7.0
+celery==5.4.0
+redis==5.0.7

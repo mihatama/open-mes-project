@@ -244,3 +244,34 @@ class QrCodeAction(models.Model):
 
     def __str__(self):
         return self.name
+
+class AsyncTask(models.Model):
+    """
+    非同期タスクの状態を管理するモデル。
+    Celeryタスクと連携し、進捗や結果を保存します。
+    """
+    STATUS_CHOICES = [
+        ('PENDING', _('待機中')),
+        ('STARTED', _('実行中')),
+        ('SUCCESS', _('成功')),
+        ('FAILURE', _('失敗')),
+        ('REVOKED', _('キャンセル済み')),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task_id = models.CharField(_("タスクID"), max_length=255, unique=True)
+    task_name = models.CharField(_("タスク名"), max_length=255, blank=True)
+    status = models.CharField(_("ステータス"), max_length=50, choices=STATUS_CHOICES, default='PENDING')
+    progress = models.PositiveIntegerField(_("進捗"), default=0)
+    total = models.PositiveIntegerField(_("総数"), default=100)
+    result = models.JSONField(_("結果"), null=True, blank=True)
+    created_at = models.DateTimeField(_("作成日時"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("非同期タスク")
+        verbose_name_plural = _("非同期タスク")
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.task_name} ({self.task_id}) - {self.get_status_display()}"

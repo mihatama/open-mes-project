@@ -14,6 +14,17 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     container_name: backend
     build:
@@ -29,11 +40,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/base/health/"]
       interval: 30s
       timeout: 10s
       retries: 5
+
+  worker:
+    container_name: worker
+    build:
+      context: ./backend/image
+      dockerfile: Dockerfile
+    command: celery -A base worker -l info
+    volumes:
+      - ./backend/src:/open_mes
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   frontend:
     container_name: frontend
