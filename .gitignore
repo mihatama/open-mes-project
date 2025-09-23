@@ -15,3 +15,4 @@ __pycache__/
 # 証明書やアカウントキーなどの機密情報を含みます
 /certbot/conf/
 /certbot/www/
+/backend/src/temp_csv_uploads/
