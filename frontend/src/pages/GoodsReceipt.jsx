@@ -340,7 +340,7 @@ const GoodsReceipt = () => {
               onChange={handleFilterChange}
               className="form-control"
               style={{ width: 'auto', flexGrow: 1 }}
-              placeholder={`${field.verbose_name}で検索...`}
+              placeholder={`${(field.display_name || '').trim() || field.verbose_name || field.model_field_name}で検索...`}
             />
           ))
         }
