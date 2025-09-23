@@ -48,6 +48,7 @@ const SideMenu = ({ isOpen, isStaffOrSuperuser, onVersionClick, onLinkClick, onL
 
       <div className="menu-category-title">アカウント設定</div>
       <Link to="/user/settings" className="menu-subcategory-link" onClick={onLinkClick}>ユーザー設定</Link>
+      <Link to="/help" className="menu-subcategory-link" onClick={onLinkClick}>ヘルプ</Link>
       <a
         href="#"
         onClick={(e) => { e.preventDefault(); onLinkClick(); onVersionClick(); }}

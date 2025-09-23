@@ -37,6 +37,7 @@ import MobileGoodsReceiptPage from './pages/mobile/MobileGoodsReceiptPage.jsx';
 import MobileGoodsIssuePage from './pages/mobile/MobileGoodsIssuePage.jsx';
 import MobileLocationTransferPage from './pages/mobile/MobileLocationTransferPage.jsx';
 import MobileLoginPage from './pages/mobile/MobileLoginPage.jsx';
+import Help from './pages/Help.jsx';
 
 // モバイル専用リダイレクト処理
 const MobileRedirector = () => {
@@ -204,6 +205,13 @@ function AppContent() {
           <Route path="/system/model-display-settings" element={<StaffRoute><ModelDisplaySettings /></StaffRoute>} />
           <Route path="/system/page-display-settings" element={<StaffRoute><PageDisplaySettings /></StaffRoute>} />
           <Route path="/system/qr-code-actions" element={<StaffRoute><QrCodeActionSettings /></StaffRoute>} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
+          <Route path="/help" element={<Help />} />
         </Route>
 
         {/* Mobile Protected Routes */}
