@@ -16,3 +16,4 @@ __pycache__/
 /certbot/conf/
 /certbot/www/
 /backend/src/temp_csv_uploads/
+GEMINI.md

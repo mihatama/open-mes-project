@@ -15,6 +15,7 @@
     "@zxing/library": "^0.21.3",
     "bootstrap": "^5.3.7",
     "html5-qrcode": "^2.3.8",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.1.0",
