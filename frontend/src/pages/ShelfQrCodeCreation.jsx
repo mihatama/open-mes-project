@@ -1,12 +1,27 @@
 import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Card, Form, Container, Row, Col } from 'react-bootstrap';
+import { Card, Form, Container, Row, Col, Button } from 'react-bootstrap';
 
 const ShelfQrCodeCreation = () => {
   const [warehouse, setWarehouse] = useState('');
   const [shelf, setShelf] = useState('');
 
   const qrCodeValue = JSON.stringify({ warehouse, shelf });
+
+  const handleDownload = () => {
+    const canvas = document.getElementById('qr-code-canvas');
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL('image/png')
+        .replace('image/png', 'image/octet-stream');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${warehouse || 'W'}-${shelf || 'S'}-qrcode.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
 
   return (
     <Container className="mt-4">
@@ -49,7 +64,14 @@ const ShelfQrCodeCreation = () => {
                 <div className="text-center mt-4">
                   <h4>生成されたQRコード</h4>
                   <div className="d-inline-block p-3 border rounded">
-                    <QRCodeCanvas value={qrCodeValue} size={256} />
+                    <QRCodeCanvas id="qr-code-canvas" value={qrCodeValue} size={256} />
+                  </div>
+                  <p className="mt-3">QRコードの文字列:</p>
+                  <code>{qrCodeValue}</code>
+                  <div className="mt-3">
+                    <Button variant="primary" onClick={handleDownload}>
+                      PNGでダウンロード
+                    </Button>
                   </div>
                 </div>
               )}
