@@ -127,23 +127,81 @@ docker compose run -it --rm backend python3 manage.py createsuperuser
 docker compose -f compose.yml run -it --rm backend python3 manage.py createsuperuser
 ```
 
-## .envファイルのサンプル
+## 環境変数の設定 (.env)
 
-下記コマンドでセキュリティキーを再発行する
+プロジェクトルートにある `.env.example` をコピーして `.env` ファイルを作成し、環境に合わせて値を設定してください。
+
+```bash
+cp .env.example .env
 ```
-docker compose exec -it backend python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+
+### 各変数の説明
+
+| 変数名 | 説明 | 設定例 |
+| :--- | :--- | :--- |
+| **Django設定** | | |
+| `SECRET_KEY` | Djangoのセキュリティキー。本番環境では予測不可能な長いランダム文字列を設定してください。 | `django-insecure-...` (開発用) |
+| `DEBUG` | デバッグモードの有効化。本番環境では必ず `False` に設定してください。 | `True` or `False` |
+| `ALLOWED_HOSTS` | Djangoがリクエストを処理するホスト名またはIPアドレスのリスト（カンマ区切り）。 | `localhost,127.0.0.1,backend` |
+| `CSRF_TRUSTED_ORIGINS` | CSRF検証で信頼されるオリジンのリスト。リバースプロキシを使用する場合や、異なるポートからのリクエストで必要です。 | `http://localhost:8000,http://127.0.0.1:8000` |
+| `CORS_ALLOWED_ORIGINS` | CORS（Cross-Origin Resource Sharing）で許可するオリジンのリスト。フロントエンドからのAPIアクセスに必要です。 | `http://localhost:5173` |
+| **データベース設定** | | |
+| `POSTGRES_DB` | 作成するデータベース名。 | `open_mes` |
+| `POSTGRES_USER` | データベースの接続ユーザー名。 | `django` |
+| `POSTGRES_PASSWORD` | データベースの接続パスワード。 | `postgres` |
+| `DATABASE_URL` | アプリケーションがデータベースに接続するためのURL。`postgres://USER:PASSWORD@HOST:PORT/DB_NAME` の形式です。 | `postgres://django:postgres@db:5432/open_mes` |
+
+### セキュリティキーの生成
+新しい `SECRET_KEY` は以下のコマンドで生成できます：
+
+```bash
+docker compose run --rm backend python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
-.env
-```
-SECRET_KEY=(生成したセキュリティキーをここに記載する)
 
-DEBUG=True
+### 本番環境でのドメイン設定例
 
-ALLOWED_HOSTS=*
-# フロントエンドやリバースプロキシが動作するオリジン(スキーマ+ホスト+ポート)をカンマ区切りで指定します。
-# 例: "http://localhost:3000,http://127.0.0.1:8000,https://your-domain.com"
-CSRF_TRUSTED_ORIGINS="http://localhost:8000,http://127.0.0.1:8000"
+独自ドメイン（例: `example.com`）を取得して本番運用する場合の設定例です。HTTPS化（SSL）を前提としています。
 
-DATABASE_URL=postgres://django:django@db:5432/open_mes
+| 変数名 | 設定値の例 | 備考 |
+| :--- | :--- | :--- |
+| `ALLOWED_HOSTS` | `example.com,www.example.com,backend` | Djangoが受け付けるホスト名。カンマ区切りで列挙します。 |
+| `CSRF_TRUSTED_ORIGINS` | `https://example.com,https://www.example.com` | `https://` スキームを含めて指定します。 |
+| `CORS_ALLOWED_ORIGINS` | `https://example.com` | フロントエンドが配信されるオリジン。`https://` スキームを含めます。 |
+| `DEBUG` | `False` | **必須**: 本番環境では必ずFalseにします。 |
 
+**注意点:**
+- `CSRF_TRUSTED_ORIGINS` と `CORS_ALLOWED_ORIGINS` には、必ず `https://` (SSLの場合) を含めてください。
+- サブドメインを使用する場合も同様にリストに追加してください。
+
+### SSL証明書の設定 (HTTPS化)
+
+本プロジェクトでは、`compose.https.yml` を使用して Let's Encrypt によるSSL証明書の自動取得と更新を行います。
+
+#### 1. 必要な環境変数の設定
+
+`.env.prod`（または使用するenvファイル）に以下の変数を追加してください。
+
+| 変数名 | 説明 | 例 |
+| :--- | :--- | :--- |
+| `DOMAIN` | 証明書を取得するドメイン名 | `example.com` |
+| `EMAIL` | Let's Encryptの登録メールアドレス（更新通知用） | `admin@example.com` |
+| `CERTBOT_TEST_CERT` | テスト用証明書モード (1: 有効, 0: 無効) | `1` |
+
+#### 2. 証明書取得モード（テスト用と本番用）
+
+Let's Encryptには取得回数の制限（レート制限）があります。設定ミスによる制限を避けるため、最初は必ず**テスト用（Staging）**で動作確認を行ってください。
+
+**テスト用モード（Staging）での起動:**
+`.env.prod` で `CERTBOT_TEST_CERT=1` を設定します（`.env.example` のデフォルト値）。
+これにより、証明書取得コマンドに `--test-cert` オプションが自動的に付与されます。
+
+**本番用モード（Production）への切り替え:**
+1. テストモードで正常にHTTPS接続（自己署名証明書のような警告が出ますが、通信自体は成功します）できることを確認します。
+2. `.env.prod` で `CERTBOT_TEST_CERT=0` に変更します。
+3. コンテナを再起動すると、本番用の証明書が取得されます。
+
+**注意:** テスト用から本番用へ切り替える際、既存のテスト用証明書が残っていると更新されない場合があります。その際は証明書ボリュームをリセットしてください：
+```bash
+sudo rm -rf certbot/conf/* certbot/www/*
+docker compose -f compose.https.yml down && docker compose -f compose.https.yml up -d
 ```
